@@ -12,62 +12,62 @@ import {
 } from '../constants';
 
 import { Logger } from './logger';
-import { WakaTime } from './wakatime';
+import { Hackatime } from './wakatime';
 
 var logger = new Logger(LogLevel.INFO);
-var wakatime: WakaTime;
+var hackatime: Hackatime;
 
 export function activate(ctx: vscode.ExtensionContext) {
-  wakatime = new WakaTime(logger, ctx.globalState);
+  hackatime = new Hackatime(logger, ctx.globalState);
 
-  ctx.globalState?.setKeysForSync(['wakatime.apiKey']);
+  ctx.globalState?.setKeysForSync(['hackatime.apiKey']);
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_API_KEY, function () {
-      wakatime.promptForApiKey();
+      hackatime.promptForApiKey();
     }),
   );
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_API_URL, function () {
-      wakatime.promptForApiUrl();
+      hackatime.promptForApiUrl();
     }),
   );
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_DEBUG, function () {
-      wakatime.promptForDebug();
+      hackatime.promptForDebug();
     }),
   );
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_DISABLE, function () {
-      wakatime.promptToDisable();
+      hackatime.promptToDisable();
     }),
   );
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_STATUS_BAR_ENABLED, function () {
-      wakatime.promptStatusBarIcon();
+      hackatime.promptStatusBarIcon();
     }),
   );
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_STATUS_BAR_CODING_ACTIVITY, function () {
-      wakatime.promptStatusBarCodingActivity();
+      hackatime.promptStatusBarCodingActivity();
     }),
   );
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_DASHBOARD, function () {
-      wakatime.openDashboardWebsite();
+      hackatime.openDashboardWebsite();
     }),
   );
 
-  ctx.subscriptions.push(wakatime);
-  wakatime.initialize();
+  ctx.subscriptions.push(hackatime);
+  hackatime.initialize();
 }
 
 export function deactivate() {
-  wakatime.dispose();
+  hackatime.dispose();
 }

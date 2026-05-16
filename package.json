@@ -1,11 +1,11 @@
 {
-  "name": "vscode-wakatime",
-  "displayName": "WakaTime",
+  "name": "vscode-hackatime",
+  "displayName": "Hackatime",
   "description": "Metrics, insights, and time tracking automatically generated from your programming activity.",
   "version": "30.2.0",
-  "publisher": "WakaTime",
+  "publisher": "Hack Club",
   "author": {
-    "name": "WakaTime"
+    "name": "ImShyMike"
   },
   "categories": [
     "Visualization",
@@ -30,15 +30,15 @@
     "tracker",
     "tracking",
     "worktime",
-    "wakatime"
+    "hackatime"
   ],
-  "homepage": "https://wakatime.com/",
+  "homepage": "https://hackatime.hackclub.com",
   "bugs": {
-    "url": "https://github.com/wakatime/vscode-wakatime/issues",
-    "email": "support@wakatime.com"
+    "url": "https://github.com/ImShyMike/vscode-hackatime/issues",
+    "email": "support@hackatime.hackclub.com"
   },
   "license": "BSD-3-Clause",
-  "icon": "images/wakatime-logo.png",
+  "icon": "images/hackatime-logo.png",
   "galleryBanner": {
     "color": "#AEC3D8",
     "theme": "light"
@@ -51,7 +51,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/wakatime/vscode-wakatime.git"
+    "url": "https://github.com/ImShyMike/vscode-hackatime.git"
   },
   "engines": {
     "vscode": "^1.89.0",
@@ -75,60 +75,60 @@
   "contributes": {
     "commands": [
       {
-        "command": "wakatime.apikey",
-        "title": "WakaTime: Api Key"
+        "command": "hackatime.apikey",
+        "title": "Hackatime: Api Key"
       },
       {
-        "command": "wakatime.apiurl",
-        "title": "WakaTime: Api Url"
+        "command": "hackatime.apiurl",
+        "title": "Hackatime: Api Url"
       },
       {
-        "command": "wakatime.proxy",
-        "title": "WakaTime: Proxy"
+        "command": "hackatime.proxy",
+        "title": "Hackatime: Proxy"
       },
       {
-        "command": "wakatime.debug",
-        "title": "WakaTime: Debug"
+        "command": "hackatime.debug",
+        "title": "Hackatime: Debug"
       },
       {
-        "command": "wakatime.disable",
-        "title": "WakaTime: Disable/Enable Extension"
+        "command": "hackatime.disable",
+        "title": "Hackatime: Disable/Enable Extension"
       },
       {
-        "command": "wakatime.status_bar_enabled",
-        "title": "WakaTime: Status Bar Enabled"
+        "command": "hackatime.status_bar_enabled",
+        "title": "Hackatime: Status Bar Enabled"
       },
       {
-        "command": "wakatime.status_bar_coding_activity",
-        "title": "WakaTime: Status Bar Coding Activity"
+        "command": "hackatime.status_bar_coding_activity",
+        "title": "Hackatime: Status Bar Coding Activity"
       },
       {
-        "command": "wakatime.dashboard",
-        "title": "WakaTime: Open Dashboard"
+        "command": "hackatime.dashboard",
+        "title": "Hackatime: Open Dashboard"
       },
       {
-        "command": "wakatime.config_file",
-        "title": "WakaTime: Open Config File..."
+        "command": "hackatime.config_file",
+        "title": "Hackatime: Open Config File..."
       },
       {
-        "command": "wakatime.log_file",
-        "title": "WakaTime: Open Log File..."
+        "command": "hackatime.log_file",
+        "title": "Hackatime: Open Log File..."
       }
     ],
     "configuration": {
-      "title": "WakaTime",
+      "title": "Hackatime",
       "properties": {
-        "wakatime.apiKey": {
+        "hackatime.apiKey": {
           "type": "string",
           "description": "Defaults to value from ~/.wakatime.cfg, unless running in browser.",
           "scope": "application"
         },
-        "wakatime.apiUrl": {
+        "hackatime.apiUrl": {
           "type": "string",
-          "description": "Defaults to https://api.wakatime.com/api/v1.",
+          "description": "Defaults to https://hackatime.hackclub.com/api/hackatime/v1.",
           "scope": "application"
         },
-        "wakatime.align": {
+        "hackatime.align": {
           "type": "string",
           "enum": [
             "left",
@@ -137,7 +137,7 @@
           "default": "left",
           "description": "Defines the alignment of the status bar item, requires restart of VS Code"
         },
-        "wakatime.alignPriority": {
+        "hackatime.alignPriority": {
           "type": "number",
           "default": 1,
           "description": "Defines priority of the status bar item. Higher values mean the item should be shown more to the left, requires restart of VS Code"

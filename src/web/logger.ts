@@ -17,7 +17,7 @@ export class Logger {
 
   public log(level: LogLevel, msg: string): void {
     if (level >= this.level) {
-      msg = `[WakaTime][${LogLevel[level]}] ${msg}`;
+      msg = `[Hackatime][${LogLevel[level]}] ${msg}`;
       if (level == LogLevel.DEBUG) console.log(msg);
       if (level == LogLevel.INFO) console.info(msg);
       if (level == LogLevel.WARN) console.warn(msg);

@@ -20,14 +20,14 @@ export class Logger {
 
   private static getOutputChannel(): vscode.OutputChannel {
     if (!Logger.outputChannel) {
-      Logger.outputChannel = vscode.window.createOutputChannel('WakaTime');
+      Logger.outputChannel = vscode.window.createOutputChannel('Hackatime');
     }
     return Logger.outputChannel;
   }
 
   public log(level: LogLevel, msg: string): void {
     if (level >= this.level) {
-      msg = `[WakaTime][${LogLevel[level]}] ${msg}`;
+      msg = `[Hackatime][${LogLevel[level]}] ${msg}`;
       if (vscode.env.appName === 'Cursor') {
         try {
           Logger.getOutputChannel().appendLine(msg);

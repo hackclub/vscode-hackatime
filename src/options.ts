@@ -219,7 +219,7 @@ export class Options {
     if (!Utils.apiKeyInvalid(keyFromEnv)) {
       if (this.cache.api_key && this.cache.api_key !== keyFromEnv) {
         vscode.window.showErrorMessage(
-          `WakaTime API Key conflict. Your env key doesn't match your ${from} key.`,
+          `Hackatime API Key conflict. Your env key doesn't match your ${from} key.`,
         );
         return this.cache.api_key;
       }
@@ -232,7 +232,7 @@ export class Options {
       if (!Utils.apiKeyInvalid(apiKeyFromVault)) {
         if (this.cache.api_key && this.cache.api_key !== apiKeyFromVault) {
           vscode.window.showErrorMessage(
-            `WakaTime API Key conflict. Your vault command key doesn't match your ${from} key.`,
+            `Hackatime API Key conflict. Your vault command key doesn't match your ${from} key.`,
           );
           return this.cache.api_key;
         }
@@ -246,7 +246,7 @@ export class Options {
       if (!Utils.apiKeyInvalid(apiKey)) {
         if (this.cache.api_key && this.cache.api_key !== apiKey) {
           vscode.window.showErrorMessage(
-            `WakaTime API Key conflict. Your ~/.wakatime.cfg key doesn't match your ${from} key.`,
+            `Hackatime API Key conflict. Your ~/.wakatime.cfg key doesn't match your ${from} key.`,
           );
         }
         this.cache.api_key = apiKey;
@@ -255,7 +255,7 @@ export class Options {
       this.logger.debug(`Exception while reading API Key from config file: ${err}`);
       if (!this.cache.api_key && `${err}`.includes('spawn EPERM')) {
         vscode.window.showErrorMessage(
-          'Microsoft Defender is blocking WakaTime. Please allow WakaTime to run so it can upload code stats to your dashboard.',
+          'Microsoft Defender is blocking Hackatime. Please allow Hackatime to run so it can upload code stats to your dashboard.',
         );
       }
     }
@@ -302,15 +302,15 @@ export class Options {
   }
 
   public getApiKeyFromEditor(): string {
-    return vscode.workspace.getConfiguration().get('wakatime.apiKey') || '';
+    return vscode.workspace.getConfiguration().get('hackatime.apiKey') || '';
   }
 
   private getApiUrlFromEditor(): string {
-    return vscode.workspace.getConfiguration().get('wakatime.apiUrl') || '';
+    return vscode.workspace.getConfiguration().get('hackatime.apiUrl') || '';
   }
 
   public getStatusBarAlignment(): vscode.StatusBarAlignment {
-    const align: string = vscode.workspace.getConfiguration().get('wakatime.align') ?? '';
+    const align: string = vscode.workspace.getConfiguration().get('hackatime.align') ?? '';
     switch (align) {
       case 'left':
         return vscode.StatusBarAlignment.Left;
@@ -322,11 +322,11 @@ export class Options {
   }
 
   public getStatusBarPriority(): number {
-    const priority = vscode.workspace.getConfiguration().get('wakatime.alignPriority');
+    const priority = vscode.workspace.getConfiguration().get('hackatime.alignPriority');
     return typeof priority === 'number' ? priority : 1;
   }
 
-  // Support for gitpod.io https://github.com/wakatime/vscode-wakatime/pull/220
+  // Support for gitpod.io https://github.com/hackatime/vscode-hackatime/pull/220
   public getApiKeyFromEnv(): string {
     if (this.cache.api_key_from_env !== undefined) return this.cache.api_key_from_env;
 
@@ -357,7 +357,7 @@ export class Options {
       }
     }
 
-    if (!apiUrl) apiUrl = 'https://api.wakatime.com/api/v1';
+    if (!apiUrl) apiUrl = 'https://hackatime.hackclub.com/api/hackatime/v1';
 
     const suffixes = ['/', '.bulk', '/users/current/heartbeats', '/heartbeats', '/heartbeat'];
     for (const suffix of suffixes) {

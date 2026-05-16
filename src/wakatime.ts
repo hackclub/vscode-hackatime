@@ -22,7 +22,7 @@ import { Dependencies } from './dependencies';
 import { Desktop } from './desktop';
 import { Logger } from './logger';
 
-export class WakaTime {
+export class Hackatime {
   private editorName: string;
   private extension: any;
   private statusBar?: vscode.StatusBarItem = undefined;
@@ -88,7 +88,7 @@ export class WakaTime {
 
         this.dependencies = new Dependencies(this.options, this.logger, this.resourcesLocation);
 
-        const extension = vscode.extensions.getExtension('WakaTime.vscode-wakatime');
+        const extension = vscode.extensions.getExtension('HackClub.vscode-hackatime');
         this.extension = (extension != undefined && extension.packageJSON) || { version: '0.0.0' };
         this.editorName = Utils.getEditorName();
 
@@ -121,7 +121,7 @@ export class WakaTime {
 
   private setResourcesLocation() {
     const home = Desktop.getHomeDirectory();
-    const folder = path.join(home, '.wakatime');
+    const folder = path.join(home, '.hackatime');
 
     try {
       fs.mkdirSync(folder, { recursive: true });
@@ -132,32 +132,32 @@ export class WakaTime {
   }
 
   public initializeDependencies(): void {
-    this.logger.debug(`Initializing WakaTime v${this.extension.version}`);
+    this.logger.debug(`Initializing Hackatime v${this.extension.version}`);
 
     const align = this.options.getStatusBarAlignment();
     const priority = this.options.getStatusBarPriority();
 
     this.statusBar = vscode.window.createStatusBarItem(
-      'com.wakatime.statusbar',
+      'com.hackatime.statusbar',
       align,
       priority + 2,
     );
-    this.statusBar.name = 'WakaTime';
+    this.statusBar.name = 'Hackatime';
     this.statusBar.command = COMMAND_DASHBOARD;
 
     this.statusBarTeamYou = vscode.window.createStatusBarItem(
-      'com.wakatime.teamyou',
+      'com.hackatime.teamyou',
       align,
       priority + 1,
     );
-    this.statusBarTeamYou.name = 'WakaTime Top dev';
+    this.statusBarTeamYou.name = 'Hackatime Top dev';
 
     this.statusBarTeamOther = vscode.window.createStatusBarItem(
-      'com.wakatime.teamother',
+      'com.hackatime.teamother',
       align,
       priority,
     );
-    this.statusBarTeamOther.name = 'WakaTime Team Total';
+    this.statusBarTeamOther.name = 'Hackatime Team Total';
 
     this.options.getSetting('settings', 'status_bar_team', false, (statusBarTeam: Setting) => {
       this.showStatusBarTeam = statusBarTeam.value !== 'false';
@@ -168,7 +168,7 @@ export class WakaTime {
         (statusBarEnabled: Setting) => {
           this.showStatusBar = statusBarEnabled.value !== 'false';
           this.setStatusBarVisibility(this.showStatusBar);
-          this.updateStatusBarText('WakaTime Initializing...');
+          this.updateStatusBarText('Hackatime Initializing...');
 
           this.checkApiKey();
 
@@ -182,9 +182,9 @@ export class WakaTime {
               this.showCodingActivity = showCodingActivity.value !== 'false';
 
               this.dependencies.checkAndInstallCli(() => {
-                this.logger.debug('WakaTime initialized');
+                this.logger.debug('Hackatime initialized');
                 this.updateStatusBarText();
-                this.updateStatusBarTooltip('WakaTime: Initialized');
+                this.updateStatusBarTooltip('Hackatime: Initialized');
                 this.getCodingActivity();
               });
             },
@@ -246,8 +246,8 @@ export class WakaTime {
     let defaultVal = await this.options.getApiKey();
     if (Utils.apiKeyInvalid(defaultVal ?? undefined)) defaultVal = '';
     const promptOptions = {
-      prompt: 'WakaTime Api Key',
-      placeHolder: 'Enter your api key from https://wakatime.com/api-key',
+      prompt: 'Hackatime Api Key',
+      placeHolder: 'Enter your api key from https://hackatime.hackclub.com/my/wakatime_setup',
       value: defaultVal!,
       ignoreFocusOut: true,
       password: hidden,
@@ -259,15 +259,15 @@ export class WakaTime {
         if (!invalid) {
           this.options.setSetting('settings', 'api_key', val, false);
         } else vscode.window.setStatusBarMessage(invalid);
-      } else vscode.window.setStatusBarMessage('WakaTime api key not provided');
+      } else vscode.window.setStatusBarMessage('Hackatime api key not provided');
     });
   }
 
   public async promptForApiUrl(): Promise<void> {
     const apiUrl = await this.options.getApiUrl(true);
     const promptOptions = {
-      prompt: 'WakaTime Api Url (Defaults to https://api.wakatime.com/api/v1)',
-      placeHolder: 'https://api.wakatime.com/api/v1',
+      prompt: 'Hackatime Api Url (Defaults to https://hackatime.hackclub.com/api/hackatime/v1)',
+      placeHolder: 'https://hackatime.hackclub.com/api/hackatime/v1',
       value: apiUrl,
       ignoreFocusOut: true,
       validateInput: Utils.validateApiUrl.bind(this),
@@ -284,7 +284,7 @@ export class WakaTime {
       let defaultVal = proxy.value;
       if (!defaultVal) defaultVal = '';
       const promptOptions = {
-        prompt: 'WakaTime Proxy',
+        prompt: 'Hackatime Proxy',
         placeHolder: `Proxy format is https://user:pass@host:port (current value \"${defaultVal}\")`,
         value: defaultVal,
         ignoreFocusOut: true,
@@ -803,7 +803,7 @@ export class WakaTime {
     const file = Utils.getFocusedFile(doc);
     if (!file) return;
 
-    // prevent sending the same heartbeat (https://github.com/wakatime/vscode-wakatime/issues/163)
+    // prevent sending the same heartbeat (https://github.com/hackatime/vscode-hackatime/issues/163)
     if (isWrite && this.isDuplicateHeartbeat(file, time, selection)) return;
 
     const now = Date.now();
@@ -848,7 +848,7 @@ export class WakaTime {
       try {
         const tmpFile = path.join(
           os.tmpdir(),
-          `wakatime-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          `hackatime-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         );
         await fs.promises.writeFile(tmpFile, doc.getText(), {
           encoding: doc.encoding as BufferEncoding,
@@ -895,7 +895,7 @@ export class WakaTime {
     if (!this.dependencies.isCliInstalled()) return;
 
     const user_agent =
-      this.editorName + '/' + vscode.version + ' vscode-wakatime/' + this.extension.version;
+      this.editorName + '/' + vscode.version + ' vscode-hackatime/' + this.extension.version;
     const args = ['--sync-ai-activity', '--plugin', Utils.quote(user_agent)];
 
     if (this.isMetricsEnabled) args.push('--metrics');
@@ -1057,7 +1057,7 @@ export class WakaTime {
         if (this.showStatusBar) {
           if (!this.showCodingActivity) this.updateStatusBarText();
           this.updateStatusBarTooltip(
-            'WakaTime: working offline... coding activity will sync next time we are online',
+            'Hackatime: working offline... coding activity will sync next time we are online',
           );
         }
         this.logger.warn(
@@ -1066,15 +1066,15 @@ export class WakaTime {
       } else if (code == 103) {
         const error_msg = `Config parsing error (103); Check your ${this.options.getLogFile()} file for more details`;
         if (this.showStatusBar) {
-          this.updateStatusBarText('WakaTime Error');
-          this.updateStatusBarTooltip(`WakaTime: ${error_msg}`);
+          this.updateStatusBarText('Hackatime Error');
+          this.updateStatusBarTooltip(`Hackatime: ${error_msg}`);
         }
         this.logger.error(error_msg);
       } else if (code == 104) {
         const error_msg = 'Invalid Api Key (104); Make sure your Api Key is correct!';
         if (this.showStatusBar) {
-          this.updateStatusBarText('WakaTime Error');
-          this.updateStatusBarTooltip(`WakaTime: ${error_msg}`);
+          this.updateStatusBarText('Hackatime Error');
+          this.updateStatusBarTooltip(`Hackatime: ${error_msg}`);
         }
         this.logger.error(error_msg);
         const now: number = Date.now();
@@ -1086,8 +1086,8 @@ export class WakaTime {
       } else {
         const error_msg = `Unknown Error (${code}); Check your ${this.options.getLogFile()} file for more details`;
         if (this.showStatusBar) {
-          this.updateStatusBarText('WakaTime Error');
-          this.updateStatusBarTooltip(`WakaTime: ${error_msg}`);
+          this.updateStatusBarText('Hackatime Error');
+          this.updateStatusBarTooltip(`Hackatime: ${error_msg}`);
         }
         this.logger.error(error_msg);
       }
@@ -1127,7 +1127,7 @@ export class WakaTime {
     if (!this.dependencies.isCliInstalled()) return;
 
     const user_agent =
-      this.editorName + '/' + vscode.version + ' vscode-wakatime/' + this.extension.version;
+      this.editorName + '/' + vscode.version + ' vscode-hackatime/' + this.extension.version;
     const args = ['--today', '--output', 'json', '--plugin', Utils.quote(user_agent)];
 
     if (this.isMetricsEnabled) args.push('--metrics');
@@ -1184,7 +1184,7 @@ export class WakaTime {
                 if (this.showCodingActivity) {
                   this.updateStatusBarText(jsonData.text.trim());
                   this.updateStatusBarTooltip(
-                    'WakaTime: Today’s coding time. Click to visit dashboard.',
+                    'Hackatime: Today’s coding time. Click to visit dashboard.',
                   );
                 } else {
                   this.updateStatusBarText();
@@ -1193,14 +1193,14 @@ export class WakaTime {
               } else {
                 this.updateStatusBarText();
                 this.updateStatusBarTooltip(
-                  'WakaTime: Calculating time spent today in background...',
+                  'Hackatime: Calculating time spent today in background...',
                 );
               }
               this.updateTeamStatusBar();
             } else {
               this.updateStatusBarText();
               this.updateStatusBarTooltip(
-                'WakaTime: Calculating time spent today in background...',
+                'Hackatime: Calculating time spent today in background...',
               );
             }
           }
@@ -1241,7 +1241,7 @@ export class WakaTime {
     }
 
     const user_agent =
-      this.editorName + '/' + vscode.version + ' vscode-wakatime/' + this.extension.version;
+      this.editorName + '/' + vscode.version + ' vscode-hackatime/' + this.extension.version;
     const args = ['--output', 'json', '--plugin', Utils.quote(user_agent)];
 
     args.push('--file-experts', Utils.quote(file));

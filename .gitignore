@@ -7,6 +7,6 @@ wakatime-cli
 *.vsix
 npm-debug.log*
 .DS_Store
-wakatime-master
+hackatime-master
 tags
 *.zip

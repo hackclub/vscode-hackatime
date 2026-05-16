@@ -1,8 +1,8 @@
 .vscode/**
 out/**
 AUTHORS
-wakatime-master/**
-dist/wakatime-master/**
+hackatime-master/**
+dist/hackatime-master/**
 test/**
 **/*.ts
 **/*.map

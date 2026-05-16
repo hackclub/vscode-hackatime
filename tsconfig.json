@@ -25,7 +25,7 @@
   ],
   "exclude": [
     "node_modules",
-    "out/wakatime-master",
+    "out/hackatime-master",
     "test",
     ".vscode-test"
   ]
