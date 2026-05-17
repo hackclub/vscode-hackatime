@@ -340,6 +340,7 @@ export class Hackatime {
       const apiKey = await Utils.fetchApiKeyWithToken(apiUrl, token);
 
       this.logger.debug('Successfully obtained API key from OAuth');
+      this.options.setSetting('settings', 'api_url', apiUrl + '/api/hackatime/v1', false);
       this.options.setSetting('settings', 'api_key', apiKey, false);
       this.options.setSetting('settings', 'heartbeat_rate_limit_seconds', '30', false);
       this.options.setSetting('settings', 'exclude_unknown_project', 'true', false);
