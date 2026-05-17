@@ -567,7 +567,7 @@ export class Hackatime {
 
     if (found.length > 0) {
       vscode.window.showWarningMessage(
-        `The following WakaTime settings are not allowed by Hack Club programs:\n - ${found.join('\n - ')}`,
+        `The following settings are not allowed by Hack Club programs:\n - ${found.join('\n - ')}`,
         { modal: true },
         'Ignore (NOT RECOMMENDED)',
         'Fix Settings',
