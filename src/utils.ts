@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { COMMON_AI_EXTENSIONS, TIME_BETWEEN_HEARTBEATS_MS } from './constants';
+import { COMMON_AI_EXTENSIONS, TIME_BETWEEN_HEARTBEATS_MS, HACKATIME_CLIENT_ID } from './constants';
 
 export class Utils {
   private static appNames = {
@@ -242,5 +242,52 @@ export class Utils {
     withinSeconds: number,
   ): boolean {
     return Math.abs(relativeTo - compareTo) <= withinSeconds;
+  }
+
+  public static async exchangeCodeForToken(
+    apiUrl: string,
+    authCode: string,
+    redirectUri: string,
+    clientId: string = HACKATIME_CLIENT_ID,
+  ): Promise<string> {
+    const tokenParams = new URLSearchParams();
+    tokenParams.append('client_id', clientId);
+    tokenParams.append('code', authCode);
+    tokenParams.append('grant_type', 'authorization_code');
+    tokenParams.append('redirect_uri', redirectUri);
+
+    const tokenResponse = await fetch(`${apiUrl}/oauth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenParams.toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.text();
+      throw new Error(`Token exchange failed: ${tokenResponse.status} ${error}`);
+    }
+
+    const tokenData = (await tokenResponse.json()) as { token?: string };
+    if (!tokenData.token) throw new Error('No access token in response');
+    return tokenData.token;
+  }
+
+  public static async fetchApiKeyWithToken(apiUrl: string, token: string): Promise<string> {
+    const apiKeyResponse = await fetch(`${apiUrl}/api/v1/authenticated/api_keys`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!apiKeyResponse.ok) {
+      const error = await apiKeyResponse.text();
+      throw new Error(`Failed to fetch API key: ${apiKeyResponse.status} ${error}`);
+    }
+
+    const apiKeyData = (await apiKeyResponse.json()) as { token?: string };
+    if (!apiKeyData.token) throw new Error('No API key in response');
+    return apiKeyData.token;
   }
 }

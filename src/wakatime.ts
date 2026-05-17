@@ -1,11 +1,13 @@
 // import * as azdata from 'azdata';
 import * as child_process from 'child_process';
 import * as fs from 'fs';
+import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
 import {
+  HACKATIME_CLIENT_ID,
   AI_RECENT_PASTES_TIME_MS,
   ALLOWED_SCHEMES,
   COMMAND_DASHBOARD,
@@ -68,6 +70,7 @@ export class Hackatime {
   private lineChanges: LineCounts = { ai: {}, human: {} };
   private syncAIHeartbeatsDebounce?: NodeJS.Timeout = undefined;
   private filesWithHumanTyping: HumanTypingMap = {};
+  private httpServer: http.Server | null = null;
 
   constructor(extensionPath: string, logger: Logger) {
     this.extensionPath = extensionPath;
@@ -111,6 +114,10 @@ export class Hackatime {
     if (this.syncAIHeartbeatsDebounce) {
       clearTimeout(this.syncAIHeartbeatsDebounce);
       this.syncAIHeartbeatsDebounce = undefined;
+    }
+    if (this.httpServer) {
+      this.httpServer.close();
+      this.httpServer = null;
     }
     this.sendHeartbeats();
     this.statusBar?.dispose();
@@ -240,6 +247,88 @@ export class Hackatime {
   private updateStatusBarTooltipForOther(tooltipText: string): void {
     if (!this.statusBarTeamOther) return;
     this.statusBarTeamOther.tooltip = tooltipText;
+  }
+
+  public loginWithHackatime(): void {
+    const redirectUri = `http://localhost:54321/callback`;
+
+    this.logger.debug('Starting Hackatime OAuth flow');
+
+    this.startCallbackServer(54321, (authCode: string) => {
+      this.exchangeCodeForApiKey(authCode);
+    });
+
+    const authUrl = `https://hackatime.hackclub.com/oauth/authorize?client_id=${HACKATIME_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
+    vscode.env.openExternal(vscode.Uri.parse(authUrl));
+  }
+
+  private startCallbackServer(port: number, onCode: (code: string) => void): void {
+    this.httpServer = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
+      if (!req.url) {
+        res.writeHead(400);
+        res.end('Invalid request');
+        return;
+      }
+
+      const url = new URL(req.url, `http://localhost:${port}`);
+      const code = url.searchParams.get('code');
+      const error = url.searchParams.get('error');
+
+      if (error) {
+        this.logger.error(`OAuth error: ${error}`);
+        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.end(`<h1>Authorization Failed</h1><p>Error: ${error}</p>`);
+        this.httpServer?.close();
+        this.httpServer = null;
+        return;
+      }
+
+      if (code) {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('<h1>✓</h1><script>window.close()</script>');
+
+        this.logger.debug('Received authorization code');
+        onCode(code);
+
+        this.httpServer?.close();
+        this.httpServer = null;
+      } else {
+        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.end('<h1>Authorization Failed</h1><p>No authorization code received</p>');
+      }
+    });
+
+    this.httpServer.on('error', (err) => {
+      this.logger.error(`OAuth server error: ${err}`);
+      vscode.window.showErrorMessage('Failed to start OAuth callback server');
+    });
+
+    this.httpServer.listen(port, () => {
+      this.logger.debug(`OAuth callback server listening on port ${port}`);
+    });
+  }
+
+  private async exchangeCodeForApiKey(authCode: string): Promise<void> {
+    try {
+      const apiUrl = await this.options.getApiUrl(true);
+      const redirectUri = 'http://localhost:54321/callback';
+
+      this.logger.debug('Exchanging authorization code for access token');
+      const token = await Utils.exchangeCodeForToken(apiUrl, authCode, redirectUri);
+
+      this.logger.debug('Fetching API key using access token');
+      const apiKey = await Utils.fetchApiKeyWithToken(apiUrl, token);
+
+      this.logger.debug('Successfully obtained API key from OAuth');
+      this.options.setSetting('settings', 'api_key', apiKey, false);
+      vscode.window.showInformationMessage('Successfully logged in to Hackatime!');
+      this.updateStatusBarText();
+    } catch (error) {
+      this.logger.error(`OAuth login failed: ${error}`);
+      vscode.window.showErrorMessage(
+        `Failed to complete login: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   public async promptForApiKey(hidden: boolean = true): Promise<void> {
@@ -418,7 +507,7 @@ export class Hackatime {
 
   private checkApiKey(): void {
     this.options.hasApiKey((hasApiKey) => {
-      if (!hasApiKey) this.promptForApiKey();
+      if (!hasApiKey) this.loginWithHackatime();
     });
   }
 

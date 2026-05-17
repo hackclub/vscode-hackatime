@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import {
   AI_RECENT_PASTES_TIME_MS,
   COMMAND_DASHBOARD,
+  HACKATIME_CLIENT_ID,
   Heartbeat,
   LogLevel,
   SEND_BUFFER_SECONDS,
@@ -206,6 +207,71 @@ export class Hackatime {
     });
   }
 
+  public loginWithHackatime(): void {
+    const redirectUri = `${window.location.origin}${window.location.pathname}#auth-callback`;
+    const clientId = HACKATIME_CLIENT_ID;
+
+    const authUrl = `https://hackatime.hackclub.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
+
+    this.logger.debug('Opening OAuth authorization popup');
+
+    const popup = window.open(authUrl, 'hackatime-oauth', 'width=500,height=600');
+
+    if (!popup) {
+      vscode.window.showErrorMessage(
+        'Failed to open authorization window. Check if popups are blocked.',
+      );
+      return;
+    }
+
+    const messageListener = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data.type === 'hackatime-oauth-code') {
+        window.removeEventListener('message', messageListener);
+        if (!popup.closed) popup.close();
+
+        if (event.data.code) {
+          this.exchangeCodeForApiKey(event.data.code);
+        } else if (event.data.error) {
+          this.logger.error(`OAuth error: ${event.data.error}`);
+          vscode.window.showErrorMessage(`Authorization failed: ${event.data.error}`);
+        }
+      }
+    };
+
+    window.addEventListener('message', messageListener);
+
+    setTimeout(() => {
+      window.removeEventListener('message', messageListener);
+      if (!popup.closed) popup.close();
+      this.logger.debug('OAuth authorization popup timed out');
+    }, 600000);
+  }
+
+  private async exchangeCodeForApiKey(authCode: string): Promise<void> {
+    try {
+      const apiUrl = this.getApiUrl();
+      const redirectUri = `${window.location.origin}${window.location.pathname}#auth-callback`;
+
+      this.logger.debug('Exchanging authorization code for access token');
+      const token = await Utils.exchangeCodeForToken(apiUrl, authCode, redirectUri);
+
+      this.logger.debug('Fetching API key using access token');
+      const apiKey = await Utils.fetchApiKeyWithToken(apiUrl, token);
+
+      this.logger.debug('Successfully obtained API key from OAuth');
+      this.config.update('hackatime.apiKey', apiKey);
+      vscode.window.showInformationMessage('Successfully logged in to Hackatime!');
+      this.updateStatusBarText();
+    } catch (error) {
+      this.logger.error(`OAuth login failed: ${error}`);
+      vscode.window.showErrorMessage(
+        `Failed to complete login: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   public promptForApiUrl(): void {
     const defaultVal: string = this.config.get('hackatime.apiUrl') || '';
     const promptOptions = {
@@ -319,7 +385,7 @@ export class Hackatime {
 
   private checkApiKey(): void {
     this.hasApiKey((hasApiKey) => {
-      if (!hasApiKey) this.promptForApiKey();
+      if (!hasApiKey) this.loginWithHackatime();
     });
   }
 

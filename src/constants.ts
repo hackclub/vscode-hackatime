@@ -33,6 +33,9 @@ export const COMMON_AI_EXTENSIONS: AIExtension[] = [
   },
 ];
 
+export const HACKATIME_CLIENT_ID = 'd6TwlKUqYWgJSDzROv9v45eFArFhnNmuWVtlTHO5z3s';
+
+export const COMMAND_LOGIN = 'hackatime.login';
 export const COMMAND_API_KEY = 'hackatime.apikey';
 export const COMMAND_API_URL = 'hackatime.apiurl';
 export const COMMAND_CONFIG_FILE = 'hackatime.config_file';

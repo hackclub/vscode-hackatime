@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import {
+  COMMAND_LOGIN,
   COMMAND_API_KEY,
   COMMAND_API_URL,
   COMMAND_DASHBOARD,
@@ -21,6 +22,12 @@ export function activate(ctx: vscode.ExtensionContext) {
   hackatime = new Hackatime(logger, ctx.globalState);
 
   ctx.globalState?.setKeysForSync(['hackatime.apiKey']);
+
+  ctx.subscriptions.push(
+    vscode.commands.registerCommand(COMMAND_LOGIN, function () {
+      hackatime.loginWithHackatime();
+    }),
+  );
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_API_KEY, function () {

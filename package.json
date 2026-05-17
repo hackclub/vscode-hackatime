@@ -75,6 +75,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "hackatime.login",
+        "title": "Hackatime: Login"
+      },
+      {
         "command": "hackatime.apikey",
         "title": "Hackatime: Api Key"
       },

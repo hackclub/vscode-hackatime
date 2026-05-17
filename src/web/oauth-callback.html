@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hackatime Authorization</title>
+</head>
+<body>
+  <div>
+    <h2 id="title">Processing authorization...</h2>
+    <p id="message">Please wait</p>
+  </div>
+
+  <script>
+    const fragment = window.location.hash.slice(1);
+    const params = new URLSearchParams(fragment);
+
+    const code = params.get('code');
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+
+    if (error) {
+      const title = document.getElementById('title');
+      const message = document.getElementById('message');
+      title.textContent = 'Authorization Failed';
+      message.id = 'error';
+      message.textContent = errorDescription || error;
+      window.opener?.postMessage(
+        { type: 'hackatime-oauth-code', error: error || 'Unknown error' },
+        window.location.origin,
+      );
+    } else if (code) {
+      const message = document.getElementById('message');
+      message.id = 'success';
+      message.textContent = '✓ Authorization successful! Closing...';
+      window.opener?.postMessage({ type: 'hackatime-oauth-code', code }, window.location.origin);
+    } else {
+      const message = document.getElementById('message');
+      message.id = 'error';
+      message.textContent = 'No authorization code received';
+    }
+
+    setTimeout(() => window.close(), 1500);
+  </script>
+</body>
+</html>
