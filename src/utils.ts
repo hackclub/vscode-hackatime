@@ -267,9 +267,9 @@ export class Utils {
       throw new Error(`Token exchange failed: ${tokenResponse.status} ${error}`);
     }
 
-    const tokenData = (await tokenResponse.json()) as { token?: string };
-    if (!tokenData.token) throw new Error('No access token in response');
-    return tokenData.token;
+    const tokenData = (await tokenResponse.json()) as { access_token?: string };
+    if (!tokenData.access_token) throw new Error('No access token in response');
+    return tokenData.access_token;
   }
 
   public static async fetchApiKeyWithToken(apiUrl: string, token: string): Promise<string> {

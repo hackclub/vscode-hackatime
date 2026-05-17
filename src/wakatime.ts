@@ -276,7 +276,7 @@ export class Hackatime {
 
       if (error) {
         this.logger.error(`OAuth error: ${error}`);
-        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.writeHead(400, { 'Content-Type': 'text/html; charset=UTF-8' });
         res.end(`<h1>Authorization Failed</h1><p>Error: ${error}</p>`);
         this.httpServer?.close();
         this.httpServer = null;
@@ -284,16 +284,18 @@ export class Hackatime {
       }
 
       if (code) {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end('<h1>✓</h1><script>window.close()</script>');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' });
+        res.end('<h1>✓ Authorization successful!</h1><p>You can now close this page...</p>');
 
         this.logger.debug('Received authorization code');
         onCode(code);
 
-        this.httpServer?.close();
-        this.httpServer = null;
+        setTimeout(() => {
+          this.httpServer?.close();
+          this.httpServer = null;
+        }, 100);
       } else {
-        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.writeHead(400, { 'Content-Type': 'text/html; charset=UTF-8' });
         res.end('<h1>Authorization Failed</h1><p>No authorization code received</p>');
       }
     });
@@ -310,7 +312,7 @@ export class Hackatime {
 
   private async exchangeCodeForApiKey(authCode: string): Promise<void> {
     try {
-      const apiUrl = await this.options.getApiUrl(true);
+      const apiUrl = 'https://hackatime.hackclub.com';
       const redirectUri = 'http://localhost:54321/callback';
 
       this.logger.debug('Exchanging authorization code for access token');
