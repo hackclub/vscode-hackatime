@@ -97,7 +97,7 @@ To run from source:
 3. `npm install`
 4. `npm run watch`
 5. Install the extension from the marketplace
-6. Then symlink `~/.vscode/extensions/HackClub.vscode-hackatime-*/dist/extension.js` to `./dist/extension.js`
+6. Then symlink `~/.vscode/extensions/hackatime.vscode-hackatime-extension-dev-*/dist/extension.js` to `./dist/extension.js`
 
 Or to run the web version from source:
 

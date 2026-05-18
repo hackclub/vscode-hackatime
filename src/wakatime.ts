@@ -91,7 +91,7 @@ export class Hackatime {
 
         this.dependencies = new Dependencies(this.options, this.logger, this.resourcesLocation);
 
-        const extension = vscode.extensions.getExtension('HackClub.vscode-hackatime');
+        const extension = vscode.extensions.getExtension('hackatime.vscode-hackatime-extension-dev');
         this.extension = (extension != undefined && extension.packageJSON) || { version: '0.0.0' };
         this.editorName = Utils.getEditorName();
 
