@@ -108,6 +108,10 @@ Or to run the web version from source:
 5. `npm run open-in-browser`
 6. Go to [localhost:3000](http://localhost:3000/) in your web browser
 
+## Fork notice
+
+This repository is a fork of the official [WakaTime VSCode extension](https://github.com/wakatime/vscode-wakatime).
+
 [hackatime]: https://hackatime.hackclub.com/docs/editors/vs-code
 [api key]: https://hackatime.hackclub.com/my/wakatime_setup
 [wakatime-cli help]: https://github.com/wakatime/wakatime-cli/blob/develop/TROUBLESHOOTING.md
