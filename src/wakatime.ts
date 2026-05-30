@@ -121,11 +121,11 @@ export class Hackatime {
       clearTimeout(this.syncAIHeartbeatsDebounce);
       this.syncAIHeartbeatsDebounce = undefined;
     }
-
     if (this.httpServer) {
       this.httpServer.close();
       this.httpServer = null;
     }
+    this.sendHeartbeats();
     this.statusBar?.dispose();
     this.statusBarTeamYou?.dispose();
     this.statusBarTeamOther?.dispose();
