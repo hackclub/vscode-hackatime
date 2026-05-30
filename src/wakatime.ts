@@ -27,6 +27,8 @@ import { Desktop } from './desktop';
 import { Logger } from './logger';
 
 export class Hackatime {
+  private static readonly MAX_PROJECT_SEARCH_DEPTH = 25;
+
   private editorName: string;
   private extension: any;
   private statusBar?: vscode.StatusBarItem = undefined;
@@ -77,8 +79,8 @@ export class Hackatime {
   
   private pendingMissingGitRepoPrompt?: string = undefined;
 
-  constructor(extensionPath: string, logger: Logger, context: vscode.ExtensionContext) {
-    this.extensionPath = extensionPath;
+  constructor(logger: Logger, context: vscode.ExtensionContext) {
+    this.extensionPath = context.extensionPath;
     this.logger = logger;
     this.state = context.globalState;
     this.setResourcesLocation();
@@ -121,10 +123,15 @@ export class Hackatime {
       clearTimeout(this.syncAIHeartbeatsDebounce);
       this.syncAIHeartbeatsDebounce = undefined;
     }
+    if (this.heartbeats.length > 0) {
+      // Best effort flush; dispose cannot await without changing the public API.
+      void this.sendHeartbeats();
+    }
     if (this.httpServer) {
       this.httpServer.close();
       this.httpServer = null;
     }
+    this.statusBar?.dispose();
     this.statusBarTeamYou?.dispose();
     this.statusBarTeamOther?.dispose();
     this.disposable?.dispose();
@@ -1549,6 +1556,10 @@ export class Hackatime {
 
   private getProjectName(uri: vscode.Uri): string {
     if (!vscode.workspace) return '';
+    const folder = this.getProjectFolder(uri);
+    const projectName = this.getProjectNameFromWakatimeProject(folder);
+    if (projectName) return projectName;
+
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
     if (workspaceFolder) {
       try {
@@ -1580,6 +1591,26 @@ export class Hackatime {
     return Desktop.isWindows() ? resolved.toLowerCase() : resolved;
   }
 
+  private getProjectNameFromWakatimeProject(folder: string): string {
+    if (!folder) return '';
+
+    const wakatimeProjectFile = path.join(folder, '.wakatime-project');
+    try {
+      if (!fs.existsSync(wakatimeProjectFile)) return '';
+
+      const contents = fs.readFileSync(wakatimeProjectFile, 'utf8');
+      const firstNonEmptyLine = contents
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.length > 0);
+
+      return firstNonEmptyLine || '';
+    } catch (error) {
+      this.logger.debug(`Unable to read .wakatime-project from ${folder}: ${error}`);
+      return '';
+    }
+  }
+
   private getDismissedUnknownProjectFolders(): string[] {
     return this.state.get<string[]>(UNKNOWN_PROJECT_PROMPT_DISMISSED_PROJECTS_KEY, []);
   }
@@ -1594,7 +1625,7 @@ export class Hackatime {
     const projectKey = this.normalizeProjectKey(folder);
     if (this.getDismissedUnknownProjectFolders().includes(projectKey)) return;
 
-    if (this.hasGitRepository(folder)) return;
+    if (this.hasGitRepository(folder) || this.hasWakatimeProjectFile(folder)) return;
 
     if (this.pendingMissingGitRepoPrompt === projectKey) return;
     this.pendingMissingGitRepoPrompt = projectKey;
@@ -1630,8 +1661,9 @@ export class Hackatime {
 
   private hasGitRepository(folder: string): boolean {
     let current = path.resolve(folder);
+    let depth = 0;
 
-    while (true) {
+    while (depth < Hackatime.MAX_PROJECT_SEARCH_DEPTH) {
       if (fs.existsSync(path.join(current, '.git'))) {
         return true;
       }
@@ -1641,7 +1673,30 @@ export class Hackatime {
         return false;
       }
       current = parent;
+      depth += 1;
     }
+
+    return false;
+  }
+
+  private hasWakatimeProjectFile(folder: string): boolean {
+    let current = path.resolve(folder);
+    let depth = 0;
+
+    while (depth < Hackatime.MAX_PROJECT_SEARCH_DEPTH) {
+      if (fs.existsSync(path.join(current, '.wakatime-project'))) {
+        return true;
+      }
+
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return false;
+      }
+      current = parent;
+      depth += 1;
+    }
+
+    return false;
   }
 
   private async initGitRepository(folder: string): Promise<void> {
