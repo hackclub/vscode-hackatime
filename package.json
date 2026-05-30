@@ -159,7 +159,7 @@
     "@types/vscode": "^1.89.0",
     "@types/webpack": "^5.28.5",
     "@types/which": "^3.0.4",
-    "@vscode/test-web": "^0.0.74",
+    "@vscode/test-web": "^0.0.80",
     "adm-zip": "0.5.16",
     "azdata": "^1.0.0",
     "del-cli": "^7.0.0",
