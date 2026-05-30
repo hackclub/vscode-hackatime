@@ -35,7 +35,7 @@
   "homepage": "https://hackatime.hackclub.com",
   "bugs": {
     "url": "https://github.com/hackclub/vscode-hackatime/issues",
-    "email": "support@hackatime.hackclub.com"
+    "email": "hackatime@hackclub.com"
   },
   "license": "BSD-3-Clause",
   "icon": "images/hackatime-logo.png",
