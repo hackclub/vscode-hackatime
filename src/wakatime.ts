@@ -15,8 +15,7 @@ import {
   LogLevel,
   SEND_BUFFER_SECONDS,
   SYNC_AI_HEARTBEATS_DEBOUNCE_SECONDS,
-  UNKNOWN_PROJECT_PROMPT_DISABLED_KEY,
-  UNKNOWN_PROJECT_PROMPT_DISMISSED_PROJECTS_KEY,
+  
 } from './constants';
 import { FileSelectionMap, HumanTypingMap, LineCounts, LinesInFiles } from './types';
 import { Utils } from './utils';
@@ -1609,11 +1608,11 @@ export class Hackatime {
   }
 
   private getDismissedUnknownProjectFolders(): string[] {
-    return this.state.get<string[]>(UNKNOWN_PROJECT_PROMPT_DISMISSED_PROJECTS_KEY, []);
+    return this.state.get<string[]>('hackatime.unknownProjectPrompt.dismissedProjects', []);
   }
 
   private isUnknownProjectPromptDisabled(): boolean {
-    return this.state.get<boolean>(UNKNOWN_PROJECT_PROMPT_DISABLED_KEY, false);
+    return this.state.get<boolean>('hackatime.unknownProjectPrompt.disabled', false);
   }
   private async maybePromptForMissingGitRepo(folder: string, project: string): Promise<void> {
     if (!folder || !project) return;
@@ -1649,7 +1648,7 @@ export class Hackatime {
       }
 
       if (choice === 'Disable alerts') {
-        await this.state.update(UNKNOWN_PROJECT_PROMPT_DISABLED_KEY, true);
+        await this.state.update('hackatime.unknownProjectPrompt.disabled', true);
       }
     } finally {
       if (this.pendingMissingGitRepoPrompt === projectKey) {
@@ -1729,7 +1728,7 @@ export class Hackatime {
     const dismissed = this.getDismissedUnknownProjectFolders();
     if (!dismissed.includes(projectKey)) {
       dismissed.push(projectKey);
-      await this.state.update(UNKNOWN_PROJECT_PROMPT_DISMISSED_PROJECTS_KEY, dismissed);
+      await this.state.update('hackatime.unknownProjectPrompt.dismissedProjects', dismissed);
     }
   }
 }

@@ -57,9 +57,7 @@ export const TIME_BETWEEN_HEARTBEATS_MS = 120000;
 export const SEND_BUFFER_SECONDS = 30;
 export const AI_RECENT_PASTES_TIME_MS = 500;
 export const SYNC_AI_HEARTBEATS_DEBOUNCE_SECONDS = 120;
-export const UNKNOWN_PROJECT_PROMPT_DISABLED_KEY = 'hackatime.unknownProjectPrompt.disabled';
-export const UNKNOWN_PROJECT_PROMPT_DISMISSED_PROJECTS_KEY =
-  'hackatime.unknownProjectPrompt.dismissedProjects';
+
 
 export interface Heartbeat {
   time: number;
