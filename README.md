@@ -92,21 +92,25 @@ Please search [existing issues][issues] before creating a new one.
 
 To run from source:
 
-1. `git clone git@github.com:ImShyMike/vscode-hackatime.git`
+1. `git clone git@github.com:hackclub/vscode-hackatime.git`
 2. `cd vscode-hackatime`
 3. `npm install`
 4. `npm run watch`
 5. Install the extension from the marketplace
-6. Then symlink `~/.vscode/extensions/hackatime.vscode-hackatime-extension-dev-*/dist/extension.js` to `./dist/extension.js`
+6. Then symlink `~/.vscode/extensions/hackatime.hackatime-time-tracker-*/dist/extension.js` to `./dist/extension.js`
 
 Or to run the web version from source:
 
-1. `git clone git@github.com:ImShyMike/vscode-hackatime.git`
+1. `git clone git@github.com:hackclub/vscode-hackatime.git`
 2. `cd vscode-hackatime`
 3. `npm install`
 4. `npm run compile`
 5. `npm run open-in-browser`
 6. Go to [localhost:3000](http://localhost:3000/) in your web browser
+
+## Fork notice
+
+This repository is a fork of the official [WakaTime VSCode extension](https://github.com/wakatime/vscode-wakatime).
 
 [hackatime]: https://hackatime.hackclub.com/docs/editors/vs-code
 [api key]: https://hackatime.hackclub.com/my/wakatime_setup
@@ -115,4 +119,4 @@ Or to run the web version from source:
 [how to debug]: https://hackatime.hackclub.com/docs
 [plugins status page]: https://hackatime.hackclub.com/docs
 [winca]: https://github.com/ukoloff/win-ca/tree/master/vscode
-[issues]: https://github.com/ImShyMike/vscode-hackatime/issues
+[issues]: https://github.com/hackclub/vscode-hackatime/issues

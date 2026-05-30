@@ -7,6 +7,7 @@ test/**
 **/*.ts
 **/*.map
 .gitignore
+.env
 tsconfig.json
 tslint.json
 webpack.config.js

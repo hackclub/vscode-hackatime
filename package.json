@@ -1,6 +1,6 @@
 {
-  "name": "vscode-hackatime-extension-dev",
-  "displayName": "Hackatime (DEV)",
+  "name": "hackatime-time-tracker",
+  "displayName": "Hackatime Time Tracker",
   "description": "Metrics, insights, and time tracking automatically generated from your programming activity.",
   "version": "30.2.0",
   "publisher": "hackatime",
@@ -34,8 +34,8 @@
   ],
   "homepage": "https://hackatime.hackclub.com",
   "bugs": {
-    "url": "https://github.com/ImShyMike/vscode-hackatime/issues",
-    "email": "support@hackatime.hackclub.com"
+    "url": "https://github.com/hackclub/vscode-hackatime/issues",
+    "email": "hackatime@hackclub.com"
   },
   "license": "BSD-3-Clause",
   "icon": "images/hackatime-logo.png",
@@ -51,7 +51,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ImShyMike/vscode-hackatime.git"
+    "url": "https://github.com/hackclub/vscode-hackatime.git"
   },
   "engines": {
     "vscode": "^1.89.0",
@@ -66,9 +66,9 @@
     "compile:dev": "tsc -p ./",
     "watch": "webpack --mode none --watch",
     "open-in-browser": "vscode-test-web --open-devtools --quality insiders --extensionDevelopmentPath=. .",
-    "publish:major": "vsce publish --allow-star-activation major && npm run publish:web && git push --tags",
-    "publish:minor": "vsce publish --allow-star-activation minor && npm run publish:web && git push --tags",
-    "publish:patch": "vsce publish --allow-star-activation patch && npm run publish:web && git push --tags",
+    "publish:major": "npx vsce publish --allow-star-activation major && git push --tags",
+    "publish:minor": "npx vsce publish --allow-star-activation minor && git push --tags",
+    "publish:patch": "npx vsce publish --allow-star-activation patch && git push --tags",
     "publish:web": "npx ovsx publish",
     "test": "npm run compile:dev && node ./node_modules/vscode/bin/test"
   },
@@ -159,7 +159,7 @@
     "@types/vscode": "^1.89.0",
     "@types/webpack": "^5.28.5",
     "@types/which": "^3.0.4",
-    "@vscode/test-web": "^0.0.74",
+    "@vscode/test-web": "^0.0.80",
     "adm-zip": "0.5.16",
     "azdata": "^1.0.0",
     "del-cli": "^7.0.0",
