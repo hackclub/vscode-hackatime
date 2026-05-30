@@ -66,10 +66,9 @@
     "compile:dev": "tsc -p ./",
     "watch": "webpack --mode none --watch",
     "open-in-browser": "vscode-test-web --open-devtools --quality insiders --extensionDevelopmentPath=. .",
-    "publish:major": "npx vsce publish --allow-star-activation major && npm run publish:web && git push --tags",
-    "publish:minor": "npx vsce publish --allow-star-activation minor && npm run publish:web && git push --tags",
-    "publish:patch": "npx vsce publish --allow-star-activation patch && npm run publish:web && git push --tags",
-    "publish:web": "npx ovsx publish",
+    "publish:major": "npx vsce publish --allow-star-activation major && git push --tags",
+    "publish:minor": "npx vsce publish --allow-star-activation minor && git push --tags",
+    "publish:patch": "npx vsce publish --allow-star-activation patch && git push --tags",
     "test": "npm run compile:dev && node ./node_modules/vscode/bin/test"
   },
   "contributes": {
