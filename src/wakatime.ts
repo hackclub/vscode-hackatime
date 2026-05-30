@@ -123,10 +123,7 @@ export class Hackatime {
       clearTimeout(this.syncAIHeartbeatsDebounce);
       this.syncAIHeartbeatsDebounce = undefined;
     }
-    if (this.heartbeats.length > 0) {
-      // Best effort flush; dispose cannot await without changing the public API.
-      void this.sendHeartbeats();
-    }
+
     if (this.httpServer) {
       this.httpServer.close();
       this.httpServer = null;
@@ -1634,7 +1631,7 @@ export class Hackatime {
       const choice = await vscode.window.showInformationMessage(
         `Hackatime is not properly tracking time in ${project} because no git repository was found.`,
         'Initialize git',
-        'Dismiss for project',
+        'Ignore for project',
         'Disable alerts',
       );
 
@@ -1646,7 +1643,7 @@ export class Hackatime {
         return;
       }
 
-      if (choice === 'Dismiss for project') {
+      if (choice === 'Ignore for project') {
         await this.dismissUnknownProjectPromptForProject(projectKey);
         return;
       }
