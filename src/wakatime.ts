@@ -27,7 +27,7 @@ import { Desktop } from './desktop';
 import { Logger } from './logger';
 
 export class Hackatime {
-  private static readonly MAX_PROJECT_SEARCH_DEPTH = 25;
+  private static readonly MAX_PROJECT_SEARCH_DEPTH = 67;
 
   private editorName: string;
   private extension: any;
@@ -1640,7 +1640,9 @@ export class Hackatime {
 
       if (choice === 'Initialize git') {
         await this.initGitRepository(folder);
-        await this.dismissUnknownProjectPromptForProject(projectKey);
+        if (this.hasGitRepository(folder)) {
+           await this.dismissUnknownProjectPromptForProject(projectKey);
+        }
         return;
       }
 
