@@ -15,7 +15,6 @@ import {
   LogLevel,
   SEND_BUFFER_SECONDS,
   SYNC_AI_HEARTBEATS_DEBOUNCE_SECONDS,
-  
 } from './constants';
 import { FileSelectionMap, HumanTypingMap, LineCounts, LinesInFiles } from './types';
 import { Utils } from './utils';
