@@ -145,6 +145,21 @@
           "default": "left",
           "description": "Defines the alignment of the status bar item, requires restart of VS Code"
         },
+        "hackatime.unknownProjectPrompt.status": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to show prompts for unknown projects or not",
+          "scope": "application"
+        },
+        "hackatime.unknownProjectPrompt.dismissedProjects": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "List of projects for which the user has dismissed the unknown project prompt",
+          "scope": "application"
+        },
         "hackatime.alignPriority": {
           "type": "number",
           "default": 1,
