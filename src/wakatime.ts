@@ -25,7 +25,7 @@ import { Desktop } from './desktop';
 import { Logger } from './logger';
 
 export class Hackatime {
-  private static readonly MAX_PROJECT_SEARCH_DEPTH = 67;
+  private static readonly MAX_PROJECT_SEARCH_DEPTH = 500;
 
   private editorName: string;
   private extension: any;
@@ -1600,10 +1600,8 @@ export class Hackatime {
   private getProjectNameFromWakatimeProject(folder: string): string {
     if (!folder) return '';
 
-    const wakatimeProjectFile = path.join(folder, '.wakatime-project');
+    const wakatimeProjectFile = this.getWakatimeProjectFile(folder);
     try {
-      if (!fs.existsSync(wakatimeProjectFile)) return '';
-
       const contents = fs.readFileSync(wakatimeProjectFile, 'utf8');
       const firstNonEmptyLine = contents
         .split(/\r?\n/)
@@ -1631,7 +1629,7 @@ export class Hackatime {
     const projectKey = this.normalizeProjectKey(folder);
     if (this.getDismissedUnknownProjectFolders().includes(projectKey)) return;
 
-    if (this.hasGitRepository(folder) || this.hasWakatimeProjectFile(folder)) return;
+    if (this.hasGitRepository(folder) || this.getWakatimeProjectFile(folder)) return;
 
     if (this.pendingMissingGitRepoPrompt === projectKey) return;
     this.pendingMissingGitRepoPrompt = projectKey;
@@ -1687,24 +1685,25 @@ export class Hackatime {
     return false;
   }
 
-  private hasWakatimeProjectFile(folder: string): boolean {
+  private getWakatimeProjectFile(folder: string): string {
     let current = path.resolve(folder);
     let depth = 0;
 
     while (depth < Hackatime.MAX_PROJECT_SEARCH_DEPTH) {
-      if (fs.existsSync(path.join(current, '.wakatime-project'))) {
-        return true;
+      const filePath = path.join(current, '.wakatime-project');
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        return filePath;
       }
 
       const parent = path.dirname(current);
       if (parent === current) {
-        return false;
+        return '';
       }
       current = parent;
       depth += 1;
     }
 
-    return false;
+    return '';
   }
 
   private async initGitRepository(folder: string): Promise<void> {
