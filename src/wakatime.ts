@@ -344,10 +344,13 @@ export class Hackatime {
       const apiKey = await Utils.fetchApiKeyWithToken(apiUrl, token);
 
       this.logger.debug('Successfully obtained API key from OAuth');
-      this.options.setSetting('settings', 'api_url', apiUrl + '/api/hackatime/v1', false);
-      this.options.setSetting('settings', 'api_key', apiKey, false);
-      this.options.setSetting('settings', 'heartbeat_rate_limit_seconds', '30', false);
-      this.options.setSetting('settings', 'exclude_unknown_project', 'true', false);
+      const settings = [
+        { key: 'api_url', value: apiUrl + '/api/hackatime/v1' },
+        { key: 'api_key', value: apiKey },
+        { key: 'heartbeat_rate_limit_seconds', value: '30' },
+        { key: 'exclude_unknown_project', value: 'true' },
+      ] as Setting[];
+      this.options.setSettings('settings', settings, false);
       vscode.window.showInformationMessage('Successfully logged in to Hackatime!');
       this.updateStatusBarText('Hackatime: Logged in!');
     } catch (error) {
