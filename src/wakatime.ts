@@ -73,14 +73,12 @@ export class Hackatime {
   private syncAIHeartbeatsDebounce?: NodeJS.Timeout = undefined;
   private filesWithHumanTyping: HumanTypingMap = {};
   private httpServer: http.Server | null = null;
-  private state: vscode.Memento;
   
   private pendingMissingGitRepoPrompt?: string = undefined;
 
-  constructor(logger: Logger, context: vscode.ExtensionContext) {
-    this.extensionPath = context.extensionPath;
+  constructor(extensionPath: string, logger: Logger) {
+    this.extensionPath = extensionPath;
     this.logger = logger;
-    this.state = context.globalState;
     this.setResourcesLocation();
     this.options = new Options(logger, this.resourcesLocation);
   }
@@ -455,9 +453,9 @@ export class Hackatime {
   }
 
   public async toggleUnknownProjectAlerts(): Promise<void> {
-    const isDisabled = this.state.get<boolean>('hackatime.unknownProjectPrompt.disabled', false);
-    const newState = !isDisabled;
-    await this.state.update('hackatime.unknownProjectPrompt.disabled', newState);
+    const isEnabled = vscode.workspace.getConfiguration().get('hackatime.unknownProjectPrompt.status') || true;
+    const newState = !isEnabled;
+    await vscode.workspace.getConfiguration().update('hackatime.unknownProjectPrompt.status', newState, vscode.ConfigurationTarget.Global);
     if (newState) {
       vscode.window.showInformationMessage('Unknown project alerts have been disabled.');
     } else {
@@ -1616,12 +1614,13 @@ export class Hackatime {
   }
 
   private getDismissedUnknownProjectFolders(): string[] {
-    return this.state.get<string[]>('hackatime.unknownProjectPrompt.dismissedProjects', []);
+    return vscode.workspace.getConfiguration().get('hackatime.unknownProjectPrompt.dismissedProjects') || [];
   }
 
   private isUnknownProjectPromptDisabled(): boolean {
-    return this.state.get<boolean>('hackatime.unknownProjectPrompt.disabled', false);
+    return vscode.workspace.getConfiguration().get('hackatime.unknownProjectPrompt.status') || false;
   }
+
   private async maybePromptForMissingGitRepo(folder: string, project: string): Promise<void> {
     if (!folder || !project) return;
     if (this.isUnknownProjectPromptDisabled()) return;
@@ -1657,7 +1656,7 @@ export class Hackatime {
       }
 
       if (choice === 'Disable alerts') {
-        await this.state.update('hackatime.unknownProjectPrompt.disabled', true);
+        await vscode.workspace.getConfiguration().update('hackatime.unknownProjectPrompt.status', true, vscode.ConfigurationTarget.Global);
       }
     } finally {
       if (this.pendingMissingGitRepoPrompt === projectKey) {
@@ -1738,7 +1737,7 @@ export class Hackatime {
     const dismissed = this.getDismissedUnknownProjectFolders();
     if (!dismissed.includes(projectKey)) {
       dismissed.push(projectKey);
-      await this.state.update('hackatime.unknownProjectPrompt.dismissedProjects', dismissed);
+      await vscode.workspace.getConfiguration().update('hackatime.unknownProjectPrompt.dismissedProjects', dismissed, vscode.ConfigurationTarget.Global);
     }
   }
 }
