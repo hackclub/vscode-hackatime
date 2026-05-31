@@ -454,7 +454,7 @@ export class Hackatime {
     });
   }
 
-  public async enableUnknownProjectAlerts(): Promise<void> {
+  public async toggleUnknownProjectAlerts(): Promise<void> {
     const isDisabled = this.state.get<boolean>('hackatime.unknownProjectPrompt.disabled', false);
     const newState = !isDisabled;
     await this.state.update('hackatime.unknownProjectPrompt.disabled', newState);

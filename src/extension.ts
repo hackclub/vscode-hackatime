@@ -8,7 +8,7 @@ import {
   COMMAND_DASHBOARD,
   COMMAND_DEBUG,
   COMMAND_DISABLE,
-  COMMAND_ENABLE_UNKNOWN_PROJECT_ALERTS,
+  COMMAND_TOGGLE_UNKNOWN_PROJECT_ALERTS,
   COMMAND_LOG_FILE,
   COMMAND_PROXY,
   COMMAND_STATUS_BAR_CODING_ACTIVITY,
@@ -64,8 +64,8 @@ export function activate(ctx: vscode.ExtensionContext) {
   );
 
   ctx.subscriptions.push(
-    vscode.commands.registerCommand(COMMAND_ENABLE_UNKNOWN_PROJECT_ALERTS, function () {
-      hackatime.enableUnknownProjectAlerts();
+    vscode.commands.registerCommand(COMMAND_TOGGLE_UNKNOWN_PROJECT_ALERTS, function () {
+      hackatime.toggleUnknownProjectAlerts();
     }),
   );
 
