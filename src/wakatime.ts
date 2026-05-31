@@ -1629,9 +1629,10 @@ export class Hackatime {
     const projectKey = this.normalizeProjectKey(folder);
     if (this.getDismissedUnknownProjectFolders().includes(projectKey)) return;
 
+    if (this.pendingMissingGitRepoPrompt === projectKey) return;
+
     if (this.hasGitRepository(folder) || this.getWakatimeProjectFile(folder)) return;
 
-    if (this.pendingMissingGitRepoPrompt === projectKey) return;
     this.pendingMissingGitRepoPrompt = projectKey;
 
     try {
