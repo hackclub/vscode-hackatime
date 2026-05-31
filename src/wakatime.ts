@@ -453,7 +453,7 @@ export class Hackatime {
   }
 
   public async toggleUnknownProjectAlerts(): Promise<void> {
-    const isEnabled = vscode.workspace.getConfiguration().get('hackatime.unknownProjectPrompt.status') || true;
+    const isEnabled = vscode.workspace.getConfiguration().get<boolean>('hackatime.unknownProjectPrompt.status') || true;
     const newState = !isEnabled;
     await vscode.workspace.getConfiguration().update('hackatime.unknownProjectPrompt.status', newState, vscode.ConfigurationTarget.Global);
     if (newState) {
@@ -1614,11 +1614,11 @@ export class Hackatime {
   }
 
   private getDismissedUnknownProjectFolders(): string[] {
-    return vscode.workspace.getConfiguration().get('hackatime.unknownProjectPrompt.dismissedProjects') || [];
+    return vscode.workspace.getConfiguration().get<string[]>('hackatime.unknownProjectPrompt.dismissedProjects') || [];
   }
 
   private isUnknownProjectPromptDisabled(): boolean {
-    return vscode.workspace.getConfiguration().get('hackatime.unknownProjectPrompt.status') || false;
+    return vscode.workspace.getConfiguration().get<boolean>('hackatime.unknownProjectPrompt.status') || false;
   }
 
   private async maybePromptForMissingGitRepo(folder: string, project: string): Promise<void> {
@@ -1656,7 +1656,7 @@ export class Hackatime {
       }
 
       if (choice === 'Disable alerts') {
-        await vscode.workspace.getConfiguration().update('hackatime.unknownProjectPrompt.status', true, vscode.ConfigurationTarget.Global);
+        await vscode.workspace.getConfiguration().update('hackatime.unknownProjectPrompt.status', false, vscode.ConfigurationTarget.Global);
       }
     } finally {
       if (this.pendingMissingGitRepoPrompt === projectKey) {
