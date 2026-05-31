@@ -2,7 +2,7 @@
   "name": "hackatime-time-tracker",
   "displayName": "Hackatime Time Tracker",
   "description": "Metrics, insights, and time tracking automatically generated from your programming activity.",
-  "version": "30.2.1",
+  "version": "30.2.2",
   "publisher": "hackatime",
   "author": {
     "name": "Hack Club"
