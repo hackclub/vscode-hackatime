@@ -1618,7 +1618,10 @@ export class Hackatime {
   }
 
   private isUnknownProjectPromptDisabled(): boolean {
-    return !vscode.workspace.getConfiguration().get<boolean>('hackatime.unknownProjectPrompt.status');
+    const isEnabled =
+      vscode.workspace.getConfiguration().get<boolean>('hackatime.unknownProjectPrompt.status') ??
+      true;
+    return !isEnabled;
   }
 
   private async maybePromptForMissingGitRepo(folder: string, project: string): Promise<void> {
