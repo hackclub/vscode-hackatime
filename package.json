@@ -99,6 +99,10 @@
         "title": "Hackatime: Disable/Enable Extension"
       },
       {
+        "command": "hackatime.toggle_unknown_project_alerts",
+        "title": "Hackatime: Toggle Unknown Project Alerts"
+      },
+      {
         "command": "hackatime.status_bar_enabled",
         "title": "Hackatime: Status Bar Enabled"
       },

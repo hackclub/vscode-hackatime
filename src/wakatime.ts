@@ -25,6 +25,8 @@ import { Desktop } from './desktop';
 import { Logger } from './logger';
 
 export class Hackatime {
+  private static readonly MAX_PROJECT_SEARCH_DEPTH = 500;
+
   private editorName: string;
   private extension: any;
   private statusBar?: vscode.StatusBarItem = undefined;
@@ -71,10 +73,14 @@ export class Hackatime {
   private syncAIHeartbeatsDebounce?: NodeJS.Timeout = undefined;
   private filesWithHumanTyping: HumanTypingMap = {};
   private httpServer: http.Server | null = null;
+  private state: vscode.Memento;
+  
+  private pendingMissingGitRepoPrompt?: string = undefined;
 
-  constructor(extensionPath: string, logger: Logger) {
-    this.extensionPath = extensionPath;
+  constructor(logger: Logger, context: vscode.ExtensionContext) {
+    this.extensionPath = context.extensionPath;
     this.logger = logger;
+    this.state = context.globalState;
     this.setResourcesLocation();
     this.options = new Options(logger, this.resourcesLocation);
   }
@@ -446,6 +452,17 @@ export class Hackatime {
         }
       });
     });
+  }
+
+  public async toggleUnknownProjectAlerts(): Promise<void> {
+    const isDisabled = this.state.get<boolean>('hackatime.unknownProjectPrompt.disabled', false);
+    const newState = !isDisabled;
+    await this.state.update('hackatime.unknownProjectPrompt.disabled', newState);
+    if (newState) {
+      vscode.window.showInformationMessage('Unknown project alerts have been disabled.');
+    } else {
+      vscode.window.showInformationMessage('Unknown project alerts have been re-enabled.');
+    }
   }
 
   public promptToDisable(): void {
@@ -1007,6 +1024,8 @@ export class Hackatime {
 
     if (doc.isUntitled) heartbeat.is_unsaved_entity = true;
 
+    await this.maybePromptForMissingGitRepo(folder, project);
+
     if (Utils.isRemoteUri(doc.uri)) {
       try {
         const tmpFile = path.join(
@@ -1543,6 +1562,10 @@ export class Hackatime {
 
   private getProjectName(uri: vscode.Uri): string {
     if (!vscode.workspace) return '';
+    const folder = this.getProjectFolder(uri);
+    const projectName = this.getProjectNameFromWakatimeProject(folder);
+    if (projectName) return projectName;
+
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
     if (workspaceFolder) {
       try {
@@ -1567,5 +1590,155 @@ export class Hackatime {
       return vscode.workspace.workspaceFolders[0].uri.fsPath;
     }
     return '';
+  }
+
+  private normalizeProjectKey(folder: string): string {
+    const resolved = path.resolve(folder);
+    return Desktop.isWindows() ? resolved.toLowerCase() : resolved;
+  }
+
+  private getProjectNameFromWakatimeProject(folder: string): string {
+    if (!folder) return '';
+
+    const wakatimeProjectFile = this.getWakatimeProjectFile(folder);
+    try {
+      const contents = fs.readFileSync(wakatimeProjectFile, 'utf8');
+      const firstNonEmptyLine = contents
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.length > 0);
+
+      return firstNonEmptyLine || '';
+    } catch (error) {
+      this.logger.debug(`Unable to read .wakatime-project from ${folder}: ${error}`);
+      return '';
+    }
+  }
+
+  private getDismissedUnknownProjectFolders(): string[] {
+    return this.state.get<string[]>('hackatime.unknownProjectPrompt.dismissedProjects', []);
+  }
+
+  private isUnknownProjectPromptDisabled(): boolean {
+    return this.state.get<boolean>('hackatime.unknownProjectPrompt.disabled', false);
+  }
+  private async maybePromptForMissingGitRepo(folder: string, project: string): Promise<void> {
+    if (!folder || !project) return;
+    if (this.isUnknownProjectPromptDisabled()) return;
+
+    const projectKey = this.normalizeProjectKey(folder);
+    if (this.getDismissedUnknownProjectFolders().includes(projectKey)) return;
+
+    if (this.pendingMissingGitRepoPrompt === projectKey) return;
+
+    if (this.hasGitRepository(folder) || this.getWakatimeProjectFile(folder)) return;
+
+    this.pendingMissingGitRepoPrompt = projectKey;
+
+    try {
+      const choice = await vscode.window.showInformationMessage(
+        `Hackatime is not properly tracking time in ${project} because no git repository was found.`,
+        'Initialize git',
+        'Ignore for project',
+        'Disable alerts',
+      );
+
+      if (choice === 'Initialize git') {
+        await this.initGitRepository(folder);
+        if (this.hasGitRepository(folder)) {
+           await this.dismissUnknownProjectPromptForProject(projectKey);
+        }
+        return;
+      }
+
+      if (choice === 'Ignore for project') {
+        await this.dismissUnknownProjectPromptForProject(projectKey);
+        return;
+      }
+
+      if (choice === 'Disable alerts') {
+        await this.state.update('hackatime.unknownProjectPrompt.disabled', true);
+      }
+    } finally {
+      if (this.pendingMissingGitRepoPrompt === projectKey) {
+        this.pendingMissingGitRepoPrompt = undefined;
+      }
+    }
+  }
+
+  private hasGitRepository(folder: string): boolean {
+    let current = path.resolve(folder);
+    let depth = 0;
+
+    while (depth < Hackatime.MAX_PROJECT_SEARCH_DEPTH) {
+      if (fs.existsSync(path.join(current, '.git'))) {
+        return true;
+      }
+
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return false;
+      }
+      current = parent;
+      depth += 1;
+    }
+
+    return false;
+  }
+
+  private getWakatimeProjectFile(folder: string): string {
+    let current = path.resolve(folder);
+    let depth = 0;
+
+    while (depth < Hackatime.MAX_PROJECT_SEARCH_DEPTH) {
+      const filePath = path.join(current, '.wakatime-project');
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        return filePath;
+      }
+
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return '';
+      }
+      current = parent;
+      depth += 1;
+    }
+
+    return '';
+  }
+
+  private async initGitRepository(folder: string): Promise<void> {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        child_process.execFile('git', ['init'], { cwd: folder }, (error, stdout, stderr) => {
+          if (stdout && stdout.toString().trim()) {
+            this.logger.debug(stdout.toString().trim());
+          }
+          if (stderr && stderr.toString().trim()) {
+            this.logger.debug(stderr.toString().trim());
+          }
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+
+      vscode.window.showInformationMessage('Initialized git repository for this project.');
+    } catch (error) {
+      this.logger.error(`Failed to initialize git repository: ${error}`);
+      vscode.window.showErrorMessage(
+        `Failed to initialize git repository: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  private async dismissUnknownProjectPromptForProject(projectKey: string): Promise<void> {
+    const dismissed = this.getDismissedUnknownProjectFolders();
+    if (!dismissed.includes(projectKey)) {
+      dismissed.push(projectKey);
+      await this.state.update('hackatime.unknownProjectPrompt.dismissedProjects', dismissed);
+    }
   }
 }
