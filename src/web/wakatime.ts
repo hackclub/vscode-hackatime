@@ -126,6 +126,7 @@ export class Hackatime {
     this.updateStatusBarText('Hackatime Initializing...');
 
     this.checkApiKey();
+    this.maybeWarnAboutWakatimeExtension();
 
     this.setupEventListeners();
 
@@ -221,6 +222,26 @@ export class Hackatime {
         else vscode.window.setStatusBarMessage(invalid);
       } else vscode.window.setStatusBarMessage('Hackatime api key not provided');
     });
+  }
+
+  private async maybeWarnAboutWakatimeExtension(): Promise<void> {
+    const extension = vscode.extensions.getExtension('WakaTime.vscode-wakatime');
+    if (extension === undefined || !extension.isActive) return;
+    const choice = await vscode.window.showWarningMessage(
+      'We noticed you have the WakaTime extension installed alongside the Hackatime extension. This may cause duplicate time tracking. We STRONGLY recommend uninstalling the WakaTime extension for the best experience with Hackatime. Do you want to uninstall WakaTime extension now?',
+      { modal: true },
+      'Uninstall WakaTime Extension',
+    );
+
+    if (choice === 'Uninstall WakaTime Extension') {
+      await vscode.commands.executeCommand(
+        'workbench.extensions.search',
+        '@id:WakaTime.vscode-wakatime',
+      );
+      vscode.window.showInformationMessage(
+        'Please uninstall the WakaTime extension.',
+      );
+    }
   }
 
   public promptForApiUrl(): void {
