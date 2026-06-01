@@ -1641,18 +1641,24 @@ export class Hackatime {
     this.pendingMissingGitRepoPrompt = projectKey;
 
     try {
+      const gitInstalled = await this.isGitInstalled();
       const choice = await vscode.window.showInformationMessage(
-        `Hackatime is not properly tracking time in ${project} because no git repository was found.`,
-        'Initialize git',
-        'Ignore for project',
-        'Disable alerts',
+        `Hackatime may not be properly tracking time in ${project}". No Git repository was found.`,
+        ...(gitInstalled
+          ? ['Initialize repository', 'Ignore for project', 'Disable alerts']
+          : ['Install Git', 'Ignore for project', 'Disable alerts']),
       );
 
-      if (choice === 'Initialize git') {
+      if (choice === 'Initialize repository' && gitInstalled) {
         await this.initGitRepository(folder);
         if (this.hasGitRepository(folder)) {
            await this.dismissUnknownProjectPromptForProject(projectKey);
         }
+        return;
+      }
+
+      if (choice === 'Install Git') {
+        await vscode.env.openExternal(vscode.Uri.parse('https://git-scm.com/install/'));
         return;
       }
 
@@ -1669,6 +1675,19 @@ export class Hackatime {
         this.pendingMissingGitRepoPrompt = undefined;
       }
     }
+  }
+
+  private async isGitInstalled(): Promise<boolean> {
+    return await new Promise((resolve) => {
+      child_process.execFile('git', ['--version'], (error) => {
+        const err = error as NodeJS.ErrnoException | undefined;
+        if (err?.code === 'ENOENT') {
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      });
+    });
   }
 
   private hasGitRepository(folder: string): boolean {
@@ -1730,11 +1749,23 @@ export class Hackatime {
         });
       });
 
-      vscode.window.showInformationMessage('Initialized git repository for this project.');
+      vscode.window.showInformationMessage('Initialized Git repository for this project!');
     } catch (error) {
-      this.logger.error(`Failed to initialize git repository: ${error}`);
+      const err = error as NodeJS.ErrnoException | undefined;
+      if (err?.code === 'ENOENT') {
+        this.logger.error('Failed to initialize Git repository: Git is not installed');
+        const choice = await vscode.window.showErrorMessage(
+          'Failed to initialize Git repository: Git is not installed. Please install Git and restart VS Code.',
+          'Open Git Install Page',
+        );
+        if (choice === 'Open Git Install Page') {
+          await vscode.env.openExternal(vscode.Uri.parse('https://git-scm.com/install/'));
+        }
+        return;
+      }
+      this.logger.error(`Failed to initialize Git repository: ${error}`);
       vscode.window.showErrorMessage(
-        `Failed to initialize git repository: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to initialize Git repository: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
