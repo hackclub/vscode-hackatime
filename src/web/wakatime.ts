@@ -143,9 +143,9 @@ export class Hackatime {
   private updateStatusBarText(text?: string): void {
     if (!this.statusBar) return;
     if (!text) {
-      this.statusBar.text = '$(clock)';
+      this.statusBar.text = '$(clockface)';
     } else {
-      this.statusBar.text = '$(clock) ' + text;
+      this.statusBar.text = '$(clockface) ' + text;
     }
   }
 
