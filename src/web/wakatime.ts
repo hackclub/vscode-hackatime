@@ -1068,29 +1068,29 @@ export class Hackatime {
   private getPlugin(): string {
     const agent = `${this.agentName}/${vscode.version} vscode-hackatime/${this.extension.version}`;
     const os = this.getOperatingSystem();
-    if (os) return `(${os}) ${agent}`;
+    if (os) return `wakatime/unset (${os}) in ${agent}`;
     return agent;
   }
 
   private getOperatingSystem(): string | null {
     if ((navigator as any).userAgentData && (navigator as any).userAgentData.platform) {
       const platform = (navigator as any).userAgentData.platform as string;
-      if (platform.toLowerCase().indexOf('mac') != -1) return 'Mac';
-      if (platform.toLowerCase().indexOf('win') != -1) return 'Windows';
-      if (platform.toLowerCase().indexOf('linux') != -1) return 'Linux';
-      if (platform.toLowerCase().indexOf('unix') != -1) return 'Unix';
-      if (platform.toLowerCase().indexOf('android') != -1) return 'Android';
+      if (platform.toLowerCase().indexOf('mac') != -1) return 'mac';
+      if (platform.toLowerCase().indexOf('win') != -1) return 'windows';
+      if (platform.toLowerCase().indexOf('linux') != -1) return 'linux';
+      if (platform.toLowerCase().indexOf('unix') != -1) return 'unix';
+      if (platform.toLowerCase().indexOf('android') != -1) return 'android';
       return platform;
     }
     if (navigator.platform) {
       const platform = navigator.platform;
       if (navigator.userAgent && navigator.userAgent.toLowerCase().indexOf('android') != -1)
         return 'Android';
-      if (platform.toLowerCase().indexOf('mac') != -1) return 'Mac';
-      if (platform.toLowerCase().indexOf('win') != -1) return 'Windows';
-      if (platform.toLowerCase().indexOf('linux') != -1) return 'Linux';
-      if (platform.toLowerCase().indexOf('unix') != -1) return 'Unix';
-      if (platform.toLowerCase().indexOf('android') != -1) return 'Android';
+      if (platform.toLowerCase().indexOf('mac') != -1) return 'mac';
+      if (platform.toLowerCase().indexOf('win') != -1) return 'windows';
+      if (platform.toLowerCase().indexOf('linux') != -1) return 'linux';
+      if (platform.toLowerCase().indexOf('unix') != -1) return 'unix';
+      if (platform.toLowerCase().indexOf('android') != -1) return 'android';
       return platform;
     }
     return null;
