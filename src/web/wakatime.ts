@@ -860,7 +860,7 @@ export class Hackatime {
           let output = parsedJSON.data.grand_total.text;
           if (
             this.config.get('hackatime.status_bar_hide_categories') != 'true' &&
-            parsedJSON.data.categories.length > 1
+            parsedJSON.data.categories && parsedJSON.data.categories.length > 1
           ) {
             output = parsedJSON.data.categories.map((x) => x.text + ' ' + x.name).join(', ');
           }
