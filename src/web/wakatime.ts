@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import {
   AI_RECENT_PASTES_TIME_MS,
   COMMAND_DASHBOARD,
-  Heartbeat,
+  WebHeartbeat,
   LogLevel,
   SEND_BUFFER_SECONDS,
 } from '../constants';
@@ -49,7 +49,7 @@ export class Hackatime {
   private currentlyFocusedFile: string;
   private teamDevsForFileCache = {};
   private lastApiKeyPrompted: number = 0;
-  private heartbeats: Heartbeat[] = [];
+  private heartbeats: WebHeartbeat[] = [];
   private lastSent: number = 0;
   private linesInFiles: LinesInFiles = {};
   private lineChanges: LineCounts = { ai: {}, human: {} };
@@ -535,7 +535,7 @@ export class Hackatime {
     const file = doc ? Utils.getFocusedFile(doc) : undefined;
     const entity = file ?? 'Codex Diff';
 
-    const heartbeat: Heartbeat = {
+    const heartbeat: WebHeartbeat = {
       entity,
       time: time / 1000,
       is_write: false,
@@ -543,7 +543,7 @@ export class Hackatime {
     };
 
     if (doc) {
-      heartbeat.lines_in_file = doc.lineCount;
+      heartbeat.lines = doc.lineCount;
       if (editor) {
         heartbeat.lineno = editor.selection.start.line + 1;
         heartbeat.cursorpos = editor.selection.start.character + 1;
@@ -554,15 +554,14 @@ export class Hackatime {
       if (folder && file && file.indexOf(folder) === 0) {
         heartbeat.project_root_count = this.countSlashesInPath(folder);
       }
-      if (doc.isUntitled) heartbeat.is_unsaved_entity = true;
     } else {
-      heartbeat.entity_type = 'app';
+      heartbeat.type = 'app';
       const wsf = vscode.workspace.workspaceFolders?.[0];
-      if (wsf) heartbeat.project_folder = wsf.uri.fsPath;
+      if (wsf) heartbeat.entity = wsf.uri.fsPath;
     }
 
     const project = this.getProjectName();
-    if (project) heartbeat.alternate_project = project;
+    if (project) heartbeat.project = project;
 
     this.lastFile = entity;
     this.lastHeartbeat = time;
@@ -692,13 +691,13 @@ export class Hackatime {
 
     const now = Date.now();
 
-    const heartbeat: Heartbeat = {
+    const heartbeat: WebHeartbeat = {
       entity: file,
       time: now / 1000,
       is_write: isWrite,
       lineno: selection.line + 1,
       cursorpos: selection.character + 1,
-      lines_in_file: doc.lineCount,
+      lines: doc.lineCount,
     };
 
     // Remove human line changes if we never detected human typing
@@ -726,7 +725,7 @@ export class Hackatime {
     }
 
     const project = this.getProjectName();
-    if (project) heartbeat.alternate_project = project;
+    if (project) heartbeat.project = project;
 
     const folder = this.getProjectFolder(doc.uri);
     if (folder && file.indexOf(folder) === 0) {
@@ -735,8 +734,6 @@ export class Hackatime {
 
     const language = this.getLanguage(doc);
     if (language) heartbeat.language = language;
-
-    if (doc.isUntitled) heartbeat.is_unsaved_entity = true;
 
     this.logger.debug(`Appending heartbeat to local buffer: ${JSON.stringify(heartbeat, null, 2)}`);
     this.heartbeats.push(heartbeat);
@@ -764,9 +761,9 @@ export class Hackatime {
     const plugin = this.getPlugin();
     const payload = JSON.stringify(
       this.heartbeats.map((h) => {
-        const { entity_type, ...rest } = h;
+        const { type, ...rest } = h;
         return {
-          type: entity_type ?? 'file',
+          type: type ?? 'file',
           plugin,
           ...rest,
         };
@@ -774,7 +771,7 @@ export class Hackatime {
     );
     this.heartbeats = [];
 
-    this.logger.debug(`Sending heartbeats to API: ${JSON.stringify(payload)}`);
+    this.logger.debug(`Sending heartbeats to API: ${payload}`);
 
     const apiKey = this.config.get('hackatime.apiKey');
     const apiUrl = this.getApiUrl();
@@ -787,7 +784,7 @@ export class Hackatime {
           'Content-Type': 'application/json',
           'X-Machine-Name': vscode.env.appHost,
         },
-        body: JSON.stringify(payload),
+        body: payload,
       });
       const parsedJSON = await response.json();
       if (response.status == 200 || response.status == 201 || response.status == 202) {

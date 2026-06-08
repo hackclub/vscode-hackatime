@@ -80,6 +80,22 @@ export interface Heartbeat {
   is_unsaved_entity?: boolean;
 }
 
+export interface WebHeartbeat {
+  time: number;
+  entity: string;
+  type?: 'file' | 'app' | 'domain';
+  is_write: boolean;
+  lineno?: number;
+  cursorpos?: number;
+  lines?: number;
+  project?: string;
+  project_root_count?: number;
+  language?: string;
+  category?: 'debugging' | 'ai coding' | 'building' | 'code reviewing';
+  ai_line_changes?: number;
+  human_line_changes?: number;
+}
+
 export interface AIExtension {
   name:
     | 'claude'
