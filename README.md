@@ -1,5 +1,9 @@
 # Hackatime for Visual Studio Code
 
+[![Version](https://vsmarketplacebadges.dev/version/hackatime.hackatime-time-tracker.png?style=flat-square&label=marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=hackatime.hackatime-time-tracker)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/hackatime.hackatime-time-tracker.png?style=flat-square&color=green)](https://marketplace.visualstudio.com/items?itemName=hackatime.hackatime-time-tracker)
+[![Rating](https://vsmarketplacebadges.dev/rating-star/hackatime.hackatime-time-tracker.png?style=flat-square&color=gold)](https://marketplace.visualstudio.com/items?itemName=hackatime.hackatime-time-tracker&ssr=false#review-details)
+
 [Hackatime][hackatime] is an open source VS Code plugin for metrics, insights, and time tracking automatically generated from your programming activity.
 
 ## Installation
@@ -45,7 +49,6 @@ If using an online IDE like [gitpods](https://gitpod.io/), add your [api key][ap
 
 Notes:
 
-1. `$HOME` defaults to `$HOME`
 1. To disable the extension at startup add `disabled=true` to your config, this operation can also be performed by pressing `⌘ + Shift + P` and selecting `Hackatime: Disable`.
 
 ## Troubleshooting
@@ -108,7 +111,7 @@ Or to run the web version from source:
 5. `npm run open-in-browser`
 6. Go to [localhost:3000](http://localhost:3000/) in your web browser
 
-## Fork notice
+## Fork Notice
 
 This repository is a fork of the official [WakaTime VSCode extension](https://github.com/wakatime/vscode-wakatime).
 
