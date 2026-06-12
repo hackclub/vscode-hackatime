@@ -2,10 +2,14 @@
   "name": "hackatime-time-tracker",
   "displayName": "Hackatime Time Tracker",
   "description": "Metrics, insights, and time tracking automatically generated from your programming activity.",
-  "version": "30.2.7",
+  "version": "30.2.1007",
   "publisher": "hackatime",
   "author": {
     "name": "Hack Club"
+  },
+  "hackatime": {
+    "upstream": "vscode-wakatime",
+    "upstreamVersion": "30.2.0"
   },
   "categories": [
     "Visualization",
@@ -66,9 +70,9 @@
     "compile:dev": "tsc -p ./",
     "watch": "webpack --mode none --watch",
     "open-in-browser": "vscode-test-web --open-devtools --quality insiders --extensionDevelopmentPath=. .",
-    "publish:major": "npx vsce publish --allow-star-activation major && git push --tags",
-    "publish:minor": "npx vsce publish --allow-star-activation minor && git push --tags",
-    "publish:patch": "npx vsce publish --allow-star-activation patch && git push --tags",
+    "release:prepare": "node scripts/prepare-hackatime-release.js",
+    "release:tag": "git tag \"v$(node -p \"require('./package.json').version\")\" && git push origin \"v$(node -p \"require('./package.json').version\")\"",
+    "publish:hackatime": "npx vsce publish --allow-star-activation && npm run release:tag",
     "publish:web": "npx ovsx publish",
     "test": "npm run compile:dev && node ./node_modules/vscode/bin/test"
   },

@@ -1,6 +1,48 @@
 
 # Changelog
 
+## 30.2.1007 (2026-06-08)
+
+- Based on upstream vscode-wakatime v30.2.0.
+- Fix web extension time display when the API response has no category data.
+
+## 30.2.1006 (2026-06-08)
+
+- Based on upstream vscode-wakatime v30.2.0.
+- Use a Hackatime-compatible user agent format for the web extension.
+
+## 30.2.1005 (2026-06-08)
+
+- Based on upstream vscode-wakatime v30.2.0.
+- Fix web extension heartbeat payload formatting.
+- Avoid double-stringifying heartbeat request payloads in web version.
+
+## 30.2.1004 (2026-06-02)
+
+- Based on upstream vscode-wakatime v30.2.0.
+- Use the clockface icon in the status bar.
+
+## 30.2.1003 (2026-06-01)
+
+- Based on upstream vscode-wakatime v30.2.0.
+- Warn when the WakaTime extension is installed alongside Hackatime.
+- Check whether Git is installed before prompting to initialize a repository.
+- Improve missing Git repository prompts and error messages.
+
+## 30.2.1002 (2026-05-31)
+
+- Based on upstream vscode-wakatime v30.2.0.
+- Write Hackatime OAuth settings in one batch to avoid async config write issues.
+
+## 30.2.1001 (2026-05-31)
+
+- Based on upstream vscode-wakatime v30.2.0.
+- Rebrand the extension for Hackatime.
+- Add Hackatime OAuth login and API key setup.
+- Use the Hackatime API URL and plugin identity.
+- Add unknown project and missing Git repository alerts.
+- Improve web extension support for Hackatime.
+
 ## 30.2.0 (2026-05-15)
 
 - Track when code reviewing Codex diffst
