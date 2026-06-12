@@ -2,14 +2,14 @@
   "name": "hackatime-time-tracker",
   "displayName": "Hackatime Time Tracker",
   "description": "Metrics, insights, and time tracking automatically generated from your programming activity.",
-  "version": "30.2.1008",
+  "version": "30.2.2001",
   "publisher": "hackatime",
   "author": {
     "name": "Hack Club"
   },
   "hackatime": {
     "upstream": "vscode-wakatime",
-    "upstreamVersion": "30.2.0"
+    "upstreamVersion": "30.2.1"
   },
   "categories": [
     "Visualization",

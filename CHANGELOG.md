@@ -1,6 +1,11 @@
 
 # Changelog
 
+## 30.2.2001 (2026-06-12)
+
+- Based on upstream vscode-wakatime v30.2.1.
+- Fix version mismatch.
+
 ## 30.2.1008 (2026-06-12)
 
 - Based on upstream vscode-wakatime v30.2.0.
