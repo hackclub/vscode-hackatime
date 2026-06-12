@@ -40,13 +40,12 @@ jobs:
         id: merge
         run: |
           git checkout -B sync-upstream main
-          if git merge --no-edit upstream/master; then
-            echo "conflicts=false" >> "$GITHUB_OUTPUT"
-          else
-            # Commit conflicts so the PR surfaces them for manual resolution.
-            git add -A
-            git -c core.editor=true commit -m "Merge upstream/master (CONFLICTS — resolve in PR)"
-            echo "conflicts=true" >> "$GITHUB_OUTPUT"
+          if ! git merge --no-edit upstream/master; then
+            echo "::error::Upstream merge has conflicts. Resolve locally by merging upstream/master into main, then push main."
+            echo "Conflicted files:"
+            git diff --name-only --diff-filter=U
+            git merge --abort
+            exit 1
           fi
           AHEAD=$(git rev-list --count main..HEAD)
           echo "ahead=$AHEAD" >> "$GITHUB_OUTPUT"
@@ -64,9 +63,6 @@ jobs:
           GH_TOKEN: ${{ secrets.SYNC_PAT }}
         run: |
           BODY="Automated merge of \`wakatime/vscode-wakatime@master\` into \`main\`."
-          if [ "${{ steps.merge.outputs.conflicts }}" = "true" ]; then
-            BODY="$BODY"$'\n\n⚠️ Merge conflicts present — resolve before merging.'
-          fi
           REPO="${{ github.repository }}"
           PR_NUMBER=$(gh pr list --repo "$REPO" --head sync-upstream --base main --state open --json number --jq '.[0].number')
           if [ -z "$PR_NUMBER" ]; then
