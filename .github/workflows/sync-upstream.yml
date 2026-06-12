@@ -29,7 +29,8 @@ jobs:
       - name: Check if upstream has new commits
         id: check
         run: |
-          git checkout main
+          git fetch origin +main:refs/remotes/origin/main
+          git checkout -B main origin/main
           BEHIND=$(git rev-list --count main..upstream/master)
           echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
           echo "main is behind upstream/master by $BEHIND commit(s)"
@@ -47,10 +48,18 @@ jobs:
             git -c core.editor=true commit -m "Merge upstream/master (CONFLICTS — resolve in PR)"
             echo "conflicts=true" >> "$GITHUB_OUTPUT"
           fi
-          git push origin sync-upstream --force-with-lease
+          AHEAD=$(git rev-list --count main..HEAD)
+          echo "ahead=$AHEAD" >> "$GITHUB_OUTPUT"
+          if [ "$AHEAD" = "0" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "sync-upstream has no commits ahead of main; skipping PR."
+            exit 0
+          fi
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          git push origin HEAD:sync-upstream --force-with-lease
 
       - name: Open or update Pull Request
-        if: steps.check.outputs.behind != '0'
+        if: steps.check.outputs.behind != '0' && steps.merge.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.SYNC_PAT }}
         run: |
@@ -58,9 +67,11 @@ jobs:
           if [ "${{ steps.merge.outputs.conflicts }}" = "true" ]; then
             BODY="$BODY"$'\n\n⚠️ Merge conflicts present — resolve before merging.'
           fi
-          if [ -z "$(gh pr list --head sync-upstream --base main --state open --json number --jq '.[].number')" ]; then
-            gh pr create --base main --head sync-upstream \
+          REPO="${{ github.repository }}"
+          PR_NUMBER=$(gh pr list --repo "$REPO" --head sync-upstream --base main --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            gh pr create --repo "$REPO" --base main --head sync-upstream \
               --title "Sync upstream changes" --body "$BODY"
           else
-            gh pr edit sync-upstream --body "$BODY"
+            gh pr edit --repo "$REPO" "$PR_NUMBER" --body "$BODY"
           fi
