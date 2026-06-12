@@ -40,12 +40,19 @@ jobs:
         id: merge
         run: |
           git checkout -B sync-upstream main
-          if ! git merge --no-edit upstream/master; then
-            echo "::error::Upstream merge has conflicts. Resolve locally by merging upstream/master into main, then push main."
+          if git merge --no-edit upstream/master; then
+            echo "conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflicts=true" >> "$GITHUB_OUTPUT"
             echo "Conflicted files:"
-            git diff --name-only --diff-filter=U
+            git diff --name-only --diff-filter=U | tee /tmp/sync-upstream-conflicts.txt
+            {
+              echo "conflict_files<<EOF"
+              cat /tmp/sync-upstream-conflicts.txt
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
             git merge --abort
-            exit 1
+            git commit --allow-empty -m "Review upstream/master sync conflicts"
           fi
           AHEAD=$(git rev-list --count main..HEAD)
           echo "ahead=$AHEAD" >> "$GITHUB_OUTPUT"
@@ -61,8 +68,18 @@ jobs:
         if: steps.check.outputs.behind != '0' && steps.merge.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.SYNC_PAT }}
+          CONFLICT_FILES: ${{ steps.merge.outputs.conflict_files }}
         run: |
           BODY="Automated merge of \`wakatime/vscode-wakatime@master\` into \`main\`."
+          if [ "${{ steps.merge.outputs.conflicts }}" = "true" ]; then
+            BODY="Upstream changes conflict with \`main\`. This PR is a review placeholder and intentionally does not include the conflicted upstream file changes yet."
+            BODY="$BODY"$'\n\nTo review and resolve locally:'
+            BODY="$BODY"$'\n\n```bash\ngh pr checkout sync-upstream\nnpm run review-pr\ncode .\n```'
+            BODY="$BODY"$'\n\nAfter resolving conflicts:'
+            BODY="$BODY"$'\n\n```bash\ngit add -A\ngit commit\ngit push --force-with-lease origin HEAD:sync-upstream\n```'
+            BODY="$BODY"$'\n\nConflicted files from the attempted merge:'
+            BODY="$BODY"$'\n\n```\n'"$CONFLICT_FILES"$'\n```'
+          fi
           REPO="${{ github.repository }}"
           PR_NUMBER=$(gh pr list --repo "$REPO" --head sync-upstream --base main --state open --json number --jq '.[0].number')
           if [ -z "$PR_NUMBER" ]; then
