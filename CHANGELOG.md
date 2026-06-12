@@ -1,6 +1,7 @@
 
 # Changelog
 
+<<<<<<< HEAD
 ## 30.2.1007 (2026-06-08)
 
 - Based on upstream vscode-wakatime v30.2.0.
@@ -42,11 +43,12 @@
 - Use the Hackatime API URL and plugin identity.
 - Add unknown project and missing Git repository alerts.
 - Improve web extension support for Hackatime.
-
+=======
 ## 30.2.1 (2026-07-12)
 
 - Fix detecting Cursor IDE name.
   [#483](https://github.com/wakatime/vscode-wakatime/issues/483)
+>>>>>>> upstream/master
 
 ## 30.2.0 (2026-05-15)
 
