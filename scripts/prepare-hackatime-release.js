@@ -140,6 +140,12 @@ function packHackatimeVersion(upstreamBase, build) {
   return `${major}.${minor}.${packedPatch}`;
 }
 
+function isPackedHackatimeVersion(version) {
+  const [, , patch] = parseVersion(version);
+
+  return patch >= HACKATIME_BUILD_RANGE;
+}
+
 function latestUpstreamBaseFromMergedTags() {
   const tags = git(['tag', '--merged', 'HEAD', '--list', 'v*'])
     .split('\n')
@@ -147,6 +153,7 @@ function latestUpstreamBaseFromMergedTags() {
     .filter(Boolean)
     .map((tag) => tag.replace(/^v/, ''))
     .filter((version) => /^\d+\.\d+\.\d+$/.test(version))
+    .filter((version) => !isPackedHackatimeVersion(version))
     .sort((left, right) => compareVersions(right, left));
 
   if (!tags.length) {
