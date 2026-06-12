@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+UPSTREAM_URL="https://github.com/wakatime/vscode-wakatime.git"
+UPSTREAM_BRANCH="master"
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+git_root=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git repository"
+cd "$git_root"
+
+require_command gh
+
+current_branch=$(git branch --show-current)
+[ "$current_branch" = "sync-upstream" ] || die "review-pr only supports the sync-upstream PR; run: gh pr checkout <sync-upstream-pr-number>"
+
+if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+  die "a merge is already in progress; resolve or abort it before running review-pr"
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+  die "working tree has uncommitted changes; commit or stash them before running review-pr"
+fi
+
+pr_number=$(gh pr view --json number --jq '.number') || die "could not find a PR for sync-upstream; run: gh pr checkout <sync-upstream-pr-number>"
+base_ref=$(gh pr view --json baseRefName --jq '.baseRefName')
+head_ref=$(gh pr view --json headRefName --jq '.headRefName')
+pr_url=$(gh pr view --json url --jq '.url')
+
+[ "$head_ref" = "sync-upstream" ] || die "checked-out PR head is '$head_ref', not sync-upstream"
+
+echo "Preparing sync-upstream PR #$pr_number for local review: $pr_url"
+echo "Base branch: $base_ref"
+echo
+
+echo "Fetching latest origin/$base_ref..."
+git fetch origin "+$base_ref:refs/remotes/origin/$base_ref"
+
+if ! git remote get-url upstream >/dev/null 2>&1; then
+  git remote add upstream "$UPSTREAM_URL"
+fi
+
+echo "Fetching latest upstream/$UPSTREAM_BRANCH..."
+git fetch upstream "+$UPSTREAM_BRANCH:refs/remotes/upstream/$UPSTREAM_BRANCH" --tags
+
+echo
+echo "Resetting sync-upstream to origin/$base_ref..."
+git reset --hard "origin/$base_ref"
+
+echo "Merging upstream/$UPSTREAM_BRANCH into sync-upstream..."
+if git merge --no-edit "upstream/$UPSTREAM_BRANCH"; then
+  echo
+  echo "upstream/$UPSTREAM_BRANCH merged cleanly. Review the result, then push with:"
+  echo "  git push --force-with-lease origin HEAD:sync-upstream"
+else
+  echo
+  echo "Merge conflicts are ready to resolve in VS Code."
+  echo "Conflicted files:"
+  git diff --name-only --diff-filter=U
+  echo
+  echo "After resolving conflicts:"
+  echo "  git add -A"
+  echo "  git commit"
+  echo "  git push --force-with-lease origin HEAD:sync-upstream"
+fi

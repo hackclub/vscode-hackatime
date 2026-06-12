@@ -70,6 +70,7 @@
     "compile:dev": "tsc -p ./",
     "watch": "webpack --mode none --watch",
     "open-in-browser": "vscode-test-web --open-devtools --quality insiders --extensionDevelopmentPath=. .",
+    "review-pr": "scripts/review-pr",
     "release:prepare": "node scripts/prepare-hackatime-release.js",
     "release:tag": "git tag \"v$(node -p \"require('./package.json').version\")\" && git push origin \"v$(node -p \"require('./package.json').version\")\"",
     "publish:hackatime": "npx vsce publish --allow-star-activation && npm run release:tag",
