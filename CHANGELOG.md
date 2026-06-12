@@ -1,7 +1,7 @@
 
 # Changelog
 
-## 30.2.1 (2026-07-12)
+## 30.2.1 (2026-06-12)
 
 - Fix detecting Cursor IDE name.
   [#483](https://github.com/wakatime/vscode-wakatime/issues/483)
