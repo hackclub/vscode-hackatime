@@ -58,11 +58,6 @@
 - Add unknown project and missing Git repository alerts.
 - Improve web extension support for Hackatime.
 
-## 30.2.1 (2026-06-12)
-
-- Fix detecting Cursor IDE name.
-  [#483](https://github.com/wakatime/vscode-wakatime/issues/483)
-
 ## 30.2.0 (2026-05-15)
 
 - Track when code reviewing Codex diffst
