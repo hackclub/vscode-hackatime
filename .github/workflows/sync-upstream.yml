@@ -26,14 +26,15 @@ jobs:
           git remote add upstream https://github.com/wakatime/vscode-wakatime.git || true
           git fetch upstream +master:refs/remotes/upstream/master '+refs/tags/v*:refs/tags/v*'
 
-      - name: Check if upstream has new commits
+      - name: Check if upstream has new changes
         id: check
         run: |
           git fetch origin +main:refs/remotes/origin/main
           git checkout -B main origin/main
-          BEHIND=$(git rev-list --count main..upstream/master)
+          CHERRY_OUTPUT=$(git cherry main upstream/master)
+          BEHIND=$(printf '%s\n' "$CHERRY_OUTPUT" | grep -c '^+' || true)
           echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
-          echo "main is behind upstream/master by $BEHIND commit(s)"
+          echo "upstream/master has $BEHIND patch(es) not already in main"
 
       - name: Build sync branch (main + upstream)
         if: steps.check.outputs.behind != '0'
@@ -41,8 +42,10 @@ jobs:
         run: |
           git checkout -B sync-upstream main
           if git merge --no-edit upstream/master; then
+            CONFLICTS=false
             echo "conflicts=false" >> "$GITHUB_OUTPUT"
           else
+            CONFLICTS=true
             echo "conflicts=true" >> "$GITHUB_OUTPUT"
             echo "Conflicted files:"
             git diff --name-only --diff-filter=U | tee /tmp/sync-upstream-conflicts.txt
@@ -54,11 +57,9 @@ jobs:
             git merge --abort
             git commit --allow-empty -m "Review upstream/master sync conflicts"
           fi
-          AHEAD=$(git rev-list --count main..HEAD)
-          echo "ahead=$AHEAD" >> "$GITHUB_OUTPUT"
-          if [ "$AHEAD" = "0" ]; then
+          if [ "$CONFLICTS" = "false" ] && git diff --quiet main HEAD; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
-            echo "sync-upstream has no commits ahead of main; skipping PR."
+            echo "sync-upstream has no file changes compared with main; skipping PR."
             exit 0
           fi
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
