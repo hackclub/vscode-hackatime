@@ -81,10 +81,13 @@ jobs:
             BODY="$BODY"$'\n\n```\n'"$CONFLICT_FILES"$'\n```'
           fi
           REPO="${{ github.repository }}"
-          PR_NUMBER=$(gh pr list --repo "$REPO" --head sync-upstream --base main --state open --json number --jq '.[0].number')
+          OWNER="${REPO%%/*}"
+          PR_NUMBER=$(gh api --method GET "repos/$REPO/pulls" \
+            -f state=open -f base=main -f head="$OWNER:sync-upstream" \
+            --jq '.[0].number // ""')
           if [ -z "$PR_NUMBER" ]; then
-            gh pr create --repo "$REPO" --base main --head sync-upstream \
-              --title "Sync upstream changes" --body "$BODY"
+            gh api --method POST "repos/$REPO/pulls" \
+              -f title="Sync upstream changes" -f base=main -f head=sync-upstream -f body="$BODY"
           else
-            gh pr edit --repo "$REPO" "$PR_NUMBER" --body "$BODY"
+            gh api --method PATCH "repos/$REPO/pulls/$PR_NUMBER" -f body="$BODY"
           fi

@@ -22,6 +22,20 @@ function git(args) {
   return run('git', args);
 }
 
+function refreshUpstreamTags() {
+  try {
+    git(['remote', 'get-url', 'upstream']);
+  } catch (error) {
+    return;
+  }
+
+  try {
+    git(['fetch', '--quiet', 'upstream', '--tags']);
+  } catch (error) {
+    console.warn('Warning: could not fetch upstream tags; using local tags.');
+  }
+}
+
 function usage() {
   console.error(`Usage: npm run release:prepare -- [--base <upstream-version>] [--build <hackatime-build>]
 
@@ -210,6 +224,11 @@ function updateChangelog(version, upstreamBase) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
+
+  if (!args.base) {
+    refreshUpstreamTags();
+  }
+
   const upstreamBase = normalizeVersion(args.base || latestUpstreamBaseFromMergedTags(), 'upstream base');
   const hackatimeBuild = args.build ? parseBuild(args.build) : nextHackatimeBuild(packageJson.version, upstreamBase);
   const nextVersion = packHackatimeVersion(upstreamBase, hackatimeBuild);
