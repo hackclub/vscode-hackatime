@@ -1,6 +1,11 @@
 
 # Changelog
 
+## 30.2.2003 (2026-07-14)
+
+- Based on upstream vscode-wakatime v30.2.1.
+- Fix login/api handling and UX.
+
 ## 30.2.2002 (2026-07-14)
 
 - Based on upstream vscode-wakatime v30.2.1.
