@@ -415,7 +415,7 @@ export class Hackatime {
   }
 
   public async promptForApiUrl(): Promise<void> {
-    const apiUrl = await this.options.getApiUrl(true);
+    const apiUrl = await this.options.getApiUrl();
     const promptOptions = {
       prompt: 'Hackatime Api Url (Defaults to https://hackatime.hackclub.com/api/hackatime/v1)',
       placeHolder: 'https://hackatime.hackclub.com/api/hackatime/v1',
@@ -557,7 +557,7 @@ export class Hackatime {
   }
 
   public async openDashboardWebsite(): Promise<void> {
-    const apiUrl = await this.options.getApiUrl(true);
+    const apiUrl = await this.options.getApiUrl();
     const dashboardUrl = Utils.apiUrlToDashboardUrl(apiUrl);
     vscode.env.openExternal(vscode.Uri.parse(dashboardUrl));
   }

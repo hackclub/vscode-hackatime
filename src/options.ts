@@ -335,15 +335,11 @@ export class Options {
     return this.cache.api_key_from_env;
   }
 
-  public async getApiUrl(checkSettingsFile = false): Promise<string> {
+  public async getApiUrl(): Promise<string> {
     let apiUrl = this.getApiUrlFromEditor();
 
     if (!apiUrl) {
       apiUrl = this.getApiUrlFromEnv();
-    }
-
-    if (!apiUrl && !checkSettingsFile) {
-      return '';
     }
 
     // people often accidentally enter their API Key into the API Url settings input
