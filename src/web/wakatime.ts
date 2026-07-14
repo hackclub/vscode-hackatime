@@ -197,7 +197,7 @@ export class Hackatime {
     );
 
     if (choice === undefined) {
-      vscode.window.setStatusBarMessage('Hackatime api key not provided');
+      this.updateStatusBarText('Hackatime api key not provided');
       return;
     }
 
@@ -218,9 +218,17 @@ export class Hackatime {
     vscode.window.showInputBox(promptOptions).then((val) => {
       if (val != undefined) {
         const invalid = Utils.apiKeyInvalid(val);
-        if (!invalid) this.config.update('hackatime.apiKey', val);
-        else vscode.window.setStatusBarMessage(invalid);
-      } else vscode.window.setStatusBarMessage('Hackatime api key not provided');
+        if (!invalid) {
+          this.config.update('hackatime.apiKey', val);
+          this.updateStatusBarText();
+          this.updateStatusBarTooltip('Hackatime: Initialized');
+        } else {
+          this.updateStatusBarText('Invalid Hackatime api key');
+          this.updateStatusBarTooltip(invalid);
+        }
+      } else {
+        this.updateStatusBarText('Hackatime api key not provided');
+      }
     });
   }
 

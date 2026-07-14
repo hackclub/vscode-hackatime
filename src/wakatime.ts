@@ -256,10 +256,11 @@ export class Hackatime {
   }
 
   public async loginWithHackatime(): Promise<void> {
-    if (vscode.env.remoteName) {
+    if (vscode.env.remoteName || process.env.CODESPACES === 'true') {
       console.debug(`OAuth flow is not supported in remote environments. Prompting for API key instead.`);
       this.promptForApiKey();
-    };
+      return;
+    }
 
     const redirectUri = `http://localhost:54321/callback`;
 
@@ -377,7 +378,8 @@ export class Hackatime {
     );
 
     if (choice === undefined) {
-      vscode.window.setStatusBarMessage('Hackatime api key not provided');
+      this.updateStatusBarText('Hackatime api key not provided');
+      this.updateStatusBarTooltip('Hackatime api key not provided');
       return;
     }
 
@@ -400,8 +402,15 @@ export class Hackatime {
         const invalid = Utils.apiKeyInvalid(val);
         if (!invalid) {
           this.options.setSetting('settings', 'api_key', val, false);
-        } else vscode.window.setStatusBarMessage(invalid);
-      } else vscode.window.setStatusBarMessage('Hackatime api key not provided');
+          this.updateStatusBarText();
+          this.updateStatusBarTooltip('Hackatime: Initialized');
+        } else {
+          this.updateStatusBarText('Invalid Hackatime api key');
+          this.updateStatusBarTooltip(invalid);
+        }
+      } else {
+        this.updateStatusBarText('Hackatime api key not provided');
+      }
     });
   }
 
