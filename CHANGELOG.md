@@ -1,6 +1,11 @@
 
 # Changelog
 
+## 30.2.2004 (2026-07-14)
+
+- Based on upstream vscode-wakatime v30.2.1.
+- Fix api url fetching.
+
 ## 30.2.2003 (2026-07-14)
 
 - Based on upstream vscode-wakatime v30.2.1.
