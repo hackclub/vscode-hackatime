@@ -1,6 +1,11 @@
 
 # Changelog
 
+## 30.2.2002 (2026-07-14)
+
+- Based on upstream vscode-wakatime v30.2.1.
+- Do not use OAuth login flow in remote environments.
+
 ## 30.2.2001 (2026-06-12)
 
 - Based on upstream vscode-wakatime v30.2.1.

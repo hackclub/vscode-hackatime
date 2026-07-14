@@ -256,6 +256,11 @@ export class Hackatime {
   }
 
   public async loginWithHackatime(): Promise<void> {
+    if (vscode.env.remoteName) {
+      console.debug(`OAuth flow is not supported in remote environments. Prompting for API key instead.`);
+      this.promptForApiKey();
+    };
+
     const redirectUri = `http://localhost:54321/callback`;
 
     const choice = await vscode.window.showInformationMessage(
