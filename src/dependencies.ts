@@ -143,7 +143,7 @@ export class Dependencies {
                   callback(false);
                 } else {
                   this.logger.debug('Unable to find latest wakatime-cli version');
-                  callback(false);
+                  callback(true);
                 }
               });
             },
