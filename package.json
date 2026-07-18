@@ -184,7 +184,7 @@
     "@types/webpack": "^5.28.5",
     "@types/which": "^3.0.4",
     "@vscode/test-web": "^0.0.80",
-    "adm-zip": "0.5.16",
+    "adm-zip": "0.6.0",
     "azdata": "^1.0.0",
     "del-cli": "^7.0.0",
     "original-fs": "^1.2.0",
