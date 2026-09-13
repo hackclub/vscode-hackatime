@@ -194,8 +194,8 @@ export class Utils {
     if (doc) {
       const file = doc.fileName;
       if (Utils.isLiveShareUri(doc.uri)) {
-        // The CLI resolves unrecognised URI schemes relative to its working directory.
-        // An absolute virtual path keeps both the file identity and project independent of it.
+        // the cli resolves unrecognised uri schemes relative to its working directory.
+        // an absolute virtual path keeps both the file identity and project independent of it.
         return vscode.Uri.joinPath(
           vscode.Uri.file('/__liveshare__'),
           doc.uri.authority,

@@ -19,7 +19,7 @@ suite('Live Share URI support (extension host)', () => {
           }),
         );
       } catch (error) {
-        // VS Code 1.137 reserves `vsls` as a text provider even without Live Share installed.
+        // vs code 1.137 reserves `vsls` as a text provider even without live share installed.
         if (!String(error).includes(`scheme '${scheme}' already registered`)) throw error;
         const changes = new vscode.EventEmitter();
         registrations.push(changes);

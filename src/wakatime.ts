@@ -637,7 +637,7 @@ export class Hackatime {
 
   private async setupEventListeners(): Promise<void> {
     const version = ++this.eventListenerVersion;
-    // Resolve session state before subscribing: host documents still use file: URIs.
+    // resolve session state before subscribing: host documents still use file: uris.
     try {
       const api = await getApi(this.context.extension.id);
       if (version !== this.eventListenerVersion) return;
@@ -752,7 +752,7 @@ export class Hackatime {
   }
 
   private requiresLocalActivity(document: vscode.TextDocument): boolean {
-    // External files can also be shared by a host, so protect all host file documents.
+    // external files can also be shared by a host, so protect all host file documents.
     return (
       Utils.isLiveShareUri(document.uri) ||
       (this.liveShare?.session.role === Role.Host &&
@@ -764,7 +764,7 @@ export class Hackatime {
     this.syncAIHeartbeatsDebounced();
     if (!ALLOWED_SCHEMES.includes(e.textEditor?.document?.uri?.scheme)) return;
     if (e.kind === vscode.TextEditorSelectionChangeKind.Command) return;
-    // Live Share also moves selections when following another participant.
+    // live share also moves selections when following another participant.
     if (this.requiresLocalActivity(e.textEditor.document) && e.kind === undefined) return;
     this.logger.debug('onChangeSelection');
     if (Utils.isAIChatSidebar(e.textEditor?.document?.uri)) {
@@ -792,7 +792,7 @@ export class Hackatime {
           return;
       } catch (error) {
         this.logger.debugException(error);
-        return; // Unknown origin must not be credited to this participant.
+        return; // unknown origin must not be credited to this participant.
       }
     }
     this.logger.debug('onChangeTextDocument');
@@ -832,7 +832,7 @@ export class Hackatime {
     }
 
     if (shared) {
-      // Attribute only this participant's changes, never the aggregate shared buffer delta.
+      // attribute only this participant's changes, never the aggregate shared buffer delta.
       const file = Utils.getFocusedFile(e.document);
       if (file) {
         const delta = e.contentChanges.reduce(
@@ -846,7 +846,7 @@ export class Hackatime {
         const changes = this.isAICodeGenerating ? this.lineChanges.ai : this.lineChanges.human;
         changes[file] = (changes[file] ?? 0) + delta;
       }
-      return; // Document changes alone never establish local activity in a shared session.
+      return; // document changes alone never establish local activity in a shared session.
     }
 
     if (!this.isAICodeGenerating) return;
@@ -860,7 +860,7 @@ export class Hackatime {
     this.logger.debug('onChangeTab');
     this.isAICodeGenerating = false;
     this.updateLineNumbers();
-    // Following the host can open tabs without any activity from this guest.
+    // following the host can open tabs without any activity from this guest.
     if (e && this.requiresLocalActivity(e.document)) return;
     this.onEvent(false);
   }
@@ -929,7 +929,7 @@ export class Hackatime {
   }
 
   private onSave(e: vscode.TextDocument | undefined): void {
-    // A shared save does not establish that this participant was active.
+    // a shared save does not establish that this participant was active.
     if (e && this.requiresLocalActivity(e)) return;
     this.logger.debug('onSave');
 
@@ -1022,7 +1022,7 @@ export class Hackatime {
   }
 
   private onEvent(isWrite: boolean, localDocument?: vscode.TextDocument): void {
-    // Background saves/tasks and Live Share follow events are not guest activity.
+    // background saves/tasks and live share follow events are not guest activity.
     const activeDocument = vscode.window.activeTextEditor?.document;
     if (
       activeDocument &&
@@ -1689,7 +1689,7 @@ export class Hackatime {
   }
 
   private getProjectFolder(uri: vscode.Uri): string {
-    // Live Share paths belong to a virtual filesystem, not this machine.
+    // live share paths belong to a virtual filesystem, not this machine.
     if (Utils.isLiveShareUri(uri)) return '';
     if (!vscode.workspace) return '';
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
