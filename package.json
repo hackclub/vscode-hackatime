@@ -75,7 +75,7 @@
     "release:tag": "git tag \"v$(node -p \"require('./package.json').version\")\" && git push origin \"v$(node -p \"require('./package.json').version\")\"",
     "publish:hackatime": "npx vsce publish --allow-star-activation && npm run release:tag",
     "publish:web": "npx ovsx publish",
-    "test": "npm run compile:dev && node ./node_modules/vscode/bin/test"
+    "test": "npm run compile:dev && node test/run.js"
   },
   "contributes": {
     "commands": [
@@ -183,10 +183,12 @@
     "@types/vscode": "^1.89.0",
     "@types/webpack": "^5.28.5",
     "@types/which": "^3.0.4",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/test-web": "^0.0.80",
     "adm-zip": "0.5.16",
     "azdata": "^1.0.0",
     "del-cli": "^7.0.0",
+    "mocha": "^12.0.1",
     "original-fs": "^1.2.0",
     "prettier": "3.6.2",
     "request": "2.88.2",
@@ -197,5 +199,8 @@
     "webpack": "^5.102.1",
     "webpack-cli": "^6.0.1",
     "which": "^5.0.0"
+  },
+  "dependencies": {
+    "vsls": "^1.0.4753"
   }
 }

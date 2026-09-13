@@ -5,6 +5,7 @@ import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { extensionId as liveShareExtensionId, getApi, LiveShare, Role } from 'vsls/vscode.js';
 
 import {
   HACKATIME_CLIENT_ID,
@@ -73,11 +74,13 @@ export class Hackatime {
   private syncAIHeartbeatsDebounce?: NodeJS.Timeout = undefined;
   private filesWithHumanTyping: HumanTypingMap = {};
   private httpServer: http.Server | null = null;
-  
+  private liveShare?: LiveShare;
+  private eventListenerVersion = 0;
+
   private pendingMissingGitRepoPrompt?: string = undefined;
 
-  constructor(extensionPath: string, logger: Logger) {
-    this.extensionPath = extensionPath;
+  constructor(private readonly context: vscode.ExtensionContext, logger: Logger) {
+    this.extensionPath = context.extensionPath;
     this.logger = logger;
     this.setResourcesLocation();
     this.options = new Options(logger, this.resourcesLocation);
@@ -95,8 +98,7 @@ export class Hackatime {
 
         this.dependencies = new Dependencies(this.options, this.logger, this.resourcesLocation);
 
-        const extension = vscode.extensions.getExtension('hackatime.hackatime-time-tracker');
-        this.extension = (extension != undefined && extension.packageJSON) || { version: '0.0.0' };
+        this.extension = this.context.extension.packageJSON;
         this.editorName = Utils.getEditorName();
 
         this.hasAICapabilities = Utils.hasAIExtensions();
@@ -115,6 +117,7 @@ export class Hackatime {
   }
 
   public dispose() {
+    this.eventListenerVersion++;
     if (this.syncAIHeartbeatsDebounce) {
       clearTimeout(this.syncAIHeartbeatsDebounce);
       this.syncAIHeartbeatsDebounce = undefined;
@@ -632,9 +635,38 @@ export class Hackatime {
     }
   }
 
-  private setupEventListeners(): void {
+  private async setupEventListeners(): Promise<void> {
+    const version = ++this.eventListenerVersion;
+    // resolve session state before subscribing: host documents still use file: uris.
+    try {
+      const api = await getApi(this.context.extension.id);
+      if (version !== this.eventListenerVersion) return;
+      if (!api && vscode.extensions.getExtension(liveShareExtensionId)) {
+        throw new Error('The installed Live Share extension did not expose its attribution API.');
+      }
+      this.liveShare = api ?? undefined;
+    } catch (error) {
+      if (version !== this.eventListenerVersion) return;
+      this.logger.debugException(error);
+      vscode.window.showWarningMessage(
+        'Hackatime could not initialise Live Share activity attribution. Reload VS Code to resume tracking safely.',
+      );
+      return;
+    }
     // subscribe to selection change and editor activation events
     const subscriptions: vscode.Disposable[] = [];
+    this.liveShare?.onDidChangeSession(
+      () => {
+        clearTimeout(this.debounceId);
+        clearTimeout(this.AIDebounceId);
+        this.isAICodeGenerating = false;
+        this.filesWithHumanTyping = {};
+        this.lineChanges = { ai: {}, human: {} };
+        this.linesInFiles = {};
+      },
+      undefined,
+      subscriptions,
+    );
     vscode.window.onDidChangeTextEditorSelection(this.onChangeSelection, this, subscriptions);
     vscode.window.onDidChangeTextEditorVisibleRanges(
       this.onDidChangeTextEditorVisibleRanges,
@@ -719,21 +751,50 @@ export class Hackatime {
     this.onEvent(false);
   }
 
+  private requiresLocalActivity(document: vscode.TextDocument): boolean {
+    // external files can also be shared by a host, so protect all host file documents.
+    return (
+      Utils.isLiveShareUri(document.uri) ||
+      (this.liveShare?.session.role === Role.Host &&
+        (document.uri.scheme === 'file' || Utils.isRemoteUri(document.uri)))
+    );
+  }
+
   private onChangeSelection(e: vscode.TextEditorSelectionChangeEvent): void {
     this.syncAIHeartbeatsDebounced();
     if (!ALLOWED_SCHEMES.includes(e.textEditor?.document?.uri?.scheme)) return;
     if (e.kind === vscode.TextEditorSelectionChangeKind.Command) return;
+    // live share also moves selections when following another participant.
+    if (this.requiresLocalActivity(e.textEditor.document) && e.kind === undefined) return;
     this.logger.debug('onChangeSelection');
     if (Utils.isAIChatSidebar(e.textEditor?.document?.uri)) {
       this.isAICodeGenerating = true;
     }
     this.updateLineNumbers();
-    this.onEvent(false);
+    this.onEvent(false, e.textEditor.document);
   }
 
-  private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
+  private async onChangeTextDocument(e: vscode.TextDocumentChangeEvent): Promise<void> {
     this.syncAIHeartbeatsDebounced();
     if (!ALLOWED_SCHEMES.includes(e.document?.uri?.scheme)) return;
+    const shared = this.requiresLocalActivity(e.document);
+    if (shared) {
+      if (!this.liveShare || e.contentChanges.length === 0) return;
+      const { id, peerNumber } = this.liveShare.session;
+      const version = this.eventListenerVersion;
+      try {
+        const peer = await this.liveShare.getPeerForTextDocumentChangeEvent(e);
+        if (
+          version !== this.eventListenerVersion ||
+          this.liveShare.session.id !== id ||
+          peer.peerNumber !== peerNumber
+        )
+          return;
+      } catch (error) {
+        this.logger.debugException(error);
+        return; // unknown origin must not be credited to this participant.
+      }
+    }
     this.logger.debug('onChangeTextDocument');
 
     if (e.contentChanges.find((v) => v.text.length === 1)) {
@@ -770,6 +831,24 @@ export class Hackatime {
       this.updateLineNumbers();
     }
 
+    if (shared) {
+      // attribute only this participant's changes, never the aggregate shared buffer delta.
+      const file = Utils.getFocusedFile(e.document);
+      if (file) {
+        const delta = e.contentChanges.reduce(
+          (sum, change) =>
+            sum +
+            change.text.split(/\r\n|\r|\n/).length -
+            1 -
+            (change.range.end.line - change.range.start.line),
+          0,
+        );
+        const changes = this.isAICodeGenerating ? this.lineChanges.ai : this.lineChanges.human;
+        changes[file] = (changes[file] ?? 0) + delta;
+      }
+      return; // document changes alone never establish local activity in a shared session.
+    }
+
     if (!this.isAICodeGenerating) return;
 
     this.onEvent(false);
@@ -781,6 +860,8 @@ export class Hackatime {
     this.logger.debug('onChangeTab');
     this.isAICodeGenerating = false;
     this.updateLineNumbers();
+    // following the host can open tabs without any activity from this guest.
+    if (e && this.requiresLocalActivity(e.document)) return;
     this.onEvent(false);
   }
 
@@ -848,6 +929,8 @@ export class Hackatime {
   }
 
   private onSave(e: vscode.TextDocument | undefined): void {
+    // a shared save does not establish that this participant was active.
+    if (e && this.requiresLocalActivity(e)) return;
     this.logger.debug('onSave');
 
     const file = Utils.getFocusedFile(e);
@@ -914,6 +997,7 @@ export class Hackatime {
   private updateLineNumbers(): void {
     const doc = vscode.window.activeTextEditor?.document;
     if (!doc) return;
+    if (this.requiresLocalActivity(doc)) return;
     const file = Utils.getFocusedFile(doc);
     if (!file) return;
 
@@ -937,7 +1021,15 @@ export class Hackatime {
     this.linesInFiles[file] = { lines: current, updatedAt: now };
   }
 
-  private onEvent(isWrite: boolean): void {
+  private onEvent(isWrite: boolean, localDocument?: vscode.TextDocument): void {
+    // background saves/tasks and live share follow events are not guest activity.
+    const activeDocument = vscode.window.activeTextEditor?.document;
+    if (
+      activeDocument &&
+      this.requiresLocalActivity(activeDocument) &&
+      activeDocument !== localDocument
+    )
+      return;
     this.sendHeartbeatsIfNecessary();
 
     clearTimeout(this.debounceId);
@@ -947,6 +1039,7 @@ export class Hackatime {
       if (editor) {
         const doc = editor.document;
         if (doc) {
+          if (this.requiresLocalActivity(doc) && doc !== localDocument) return;
           const file = Utils.getFocusedFile(doc);
           if (!file) {
             return;
@@ -1042,17 +1135,18 @@ export class Hackatime {
 
     await this.maybePromptForMissingGitRepo(folder, project);
 
-    if (Utils.isRemoteUri(doc.uri)) {
+    if (Utils.isRemoteUri(doc.uri) || Utils.isLiveShareUri(doc.uri)) {
       try {
+        const suffix = Utils.isLiveShareUri(doc.uri) ? path.extname(doc.uri.path) : '';
         const tmpFile = path.join(
           os.tmpdir(),
-          `hackatime-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          `hackatime-${Date.now()}-${Math.random().toString(36).slice(2)}${suffix}`,
         );
         await fs.promises.writeFile(tmpFile, doc.getText(), {
           encoding: doc.encoding as BufferEncoding,
         });
         heartbeat.local_file = tmpFile;
-        heartbeat.entity = doc.fileName;
+        if (!Utils.isLiveShareUri(doc.uri)) heartbeat.entity = doc.fileName;
       } catch (e) {
         this.logger.debugException(e);
       }
@@ -1595,6 +1689,8 @@ export class Hackatime {
   }
 
   private getProjectFolder(uri: vscode.Uri): string {
+    // live share paths belong to a virtual filesystem, not this machine.
+    if (Utils.isLiveShareUri(uri)) return '';
     if (!vscode.workspace) return '';
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
     if (workspaceFolder) {
