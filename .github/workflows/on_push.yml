@@ -18,4 +18,4 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Unit tests
-        run: npm run compile:dev
+        run: xvfb-run -a npm test

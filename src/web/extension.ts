@@ -19,7 +19,7 @@ var logger = new Logger(LogLevel.INFO);
 var hackatime: Hackatime;
 
 export function activate(ctx: vscode.ExtensionContext) {
-  hackatime = new Hackatime(logger, ctx.globalState);
+  hackatime = new Hackatime(logger, ctx);
 
   ctx.globalState?.setKeysForSync(['hackatime.apiKey']);
 
