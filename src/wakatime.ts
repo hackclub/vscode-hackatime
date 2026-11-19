@@ -327,7 +327,8 @@ export class Hackatime {
       if (error) {
         this.logger.error(`OAuth error: ${error}`);
         res.writeHead(400, { 'Content-Type': 'text/html; charset=UTF-8' });
-        res.end(`<h1>Authorization Failed</h1><p>Error: ${error}</p>`);
+        // the error comes straight from the query string, so escape it before echoing it back
+        res.end(`<h1>Authorization Failed</h1><p>Error: ${Utils.escapeHtml(error)}</p>`);
         this.httpServer?.close();
         this.httpServer = null;
         return;

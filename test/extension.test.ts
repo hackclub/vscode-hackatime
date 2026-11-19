@@ -55,3 +55,12 @@ suite('Utils.getEditorName Tests', () => {
     assert.strictEqual(Utils.getEditorName(env), 'someeditor');
   });
 });
+
+suite('Utils.escapeHtml Tests', () => {
+  test('neutralizes markup from the OAuth error query param', () => {
+    assert.strictEqual(
+      Utils.escapeHtml(`<script>alert("x")</script>&'`),
+      '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;&amp;&#39;',
+    );
+  });
+});
