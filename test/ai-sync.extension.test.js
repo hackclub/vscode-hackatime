@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 const { Hackatime } = require('../out/src/wakatime');
 
-// these tests never run a real wakatime-cli: a fake script records the arguments it gets,
+// these tests never run a real hackatime-cli: a fake script records the arguments it gets,
 // so nothing can read real AI transcripts
 suite('AI transcript sync is opt-in', function () {
   let dir, record;

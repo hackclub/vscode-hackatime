@@ -574,7 +574,7 @@ export class Hackatime {
           label: 'Enable',
           description: enabled ? '(current)' : undefined,
           detail:
-            'Let wakatime-cli read local Claude Code, Codex, Cursor, Amp and other AI tool transcripts and send the AI activity it finds to Hackatime.',
+            'Let hackatime-cli read local Claude Code, Codex, Cursor, Amp and other AI tool transcripts and send the AI activity it finds to Hackatime.',
           enable: true,
         },
       ],

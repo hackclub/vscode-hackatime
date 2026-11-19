@@ -11,7 +11,7 @@ const { Dependencies } = require('../out/src/dependencies');
 const { Options } = require('../out/src/options');
 const { Hackatime } = require('../out/src/wakatime');
 
-suite('wakatime-cli integration (extension host)', () => {
+suite('hackatime-cli integration (extension host)', () => {
   const cliPath = process.env.WAKATIME_CLI_PATH;
 
   test('normalizes a Live Share heartbeat without losing its identity', async function () {
