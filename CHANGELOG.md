@@ -1,6 +1,11 @@
 
 # Changelog
 
+## 30.2.2006 (2026-11-19)
+
+- Based on upstream vscode-wakatime v30.2.1.
+- AI transcript sync (reading Claude Code, Codex, Cursor and other AI tool transcripts) is now off by default. Turn it on with the `Hackatime: AI Transcript Sync` command or the `hackatime.aiTranscriptSync.enabled` setting.
+
 ## 30.2.2005 (2026-11-19)
 
 - Based on upstream vscode-wakatime v30.2.1.
