@@ -241,6 +241,40 @@ suite('desktop: logged out heartbeats (extension host)', function () {
   });
 });
 
+suite('desktop: saved activity question without a real cli', () => {
+  test('still asks when the queue has heartbeats but their times are unreadable', async function () {
+    if (process.platform === 'win32') this.skip();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hackatime-fakecli-'));
+    // knows how many heartbeats are queued, but fails to print them
+    const fakeCli = path.join(dir, 'wakatime-cli');
+    fs.writeFileSync(
+      fakeCli,
+      '#!/bin/sh\n' +
+        'if [ "$1" = "--offline-count" ]; then echo 3; exit 0; fi\n' +
+        'echo "boom" >&2; exit 1\n',
+    );
+    fs.chmodSync(fakeCli, 0o755);
+
+    const harness = Object.create(Hackatime.prototype);
+    Object.assign(harness, {
+      options: { getApiKey: async () => '' },
+      dependencies: { isCliInstalled: () => true, getCliLocation: () => fakeCli },
+      logger: { debug: () => {}, warnException: () => {} },
+    });
+    const shown = stubMessages({ warning: SAVED_ACTIVITY_ADD });
+    try {
+      assert.strictEqual(await harness.confirmSavedActivityBeforeLogin(), true);
+      const question = shown.find((s) => s.kind === 'warning');
+      assert.ok(question, 'the saved activity question was skipped');
+      assert.ok(question.message.includes('from before you logged in'), question.message);
+      assert.ok(question.rest[0].detail.includes('3 heartbeats'), question.rest[0].detail);
+    } finally {
+      shown.restore();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 suite('web: heartbeat queue', () => {
   const KEY = '00000000-0000-4000-8000-000000000000';
   let requests, statuses, originalFetch, shown;

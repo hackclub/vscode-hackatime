@@ -618,14 +618,20 @@ export class Hackatime {
     const binary = this.dependencies.getCliLocation();
     const options = Desktop.buildOptions() as child_process.ExecFileOptions;
     let count = 0;
-    let times: number[] = [];
     try {
       count = await getOfflineCount(binary, options);
-      if (count === 0) return true;
+    } catch (e) {
+      this.logger.warnException(e);
+      return true; // can't tell if anything is queued, so don't block login over it
+    }
+    if (count === 0) return true;
+
+    // something is queued, so always ask, even if the times can't be read
+    let times: number[] = [];
+    try {
       times = await getOfflineTimes(binary, count, options);
     } catch (e) {
       this.logger.warnException(e);
-      return true; // can't read the queue, so there's nothing to show; don't block login
     }
 
     const { message, detail } = savedActivityPrompt(count, times);
