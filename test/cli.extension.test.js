@@ -46,14 +46,33 @@ suite('wakatime-cli integration (extension host)', () => {
       process.env.WAKATIME_HOME = tempHome;
       delete process.env.HACKATIME_API_KEY;
 
-      await vscode.workspace.updateWorkspaceFolders(
-        0,
-        vscode.workspace.workspaceFolders?.length || 0,
-        {
-          uri: vscode.Uri.file(workspace),
-          name: 'Live Share Workspace',
-        },
-      );
+      // updateWorkspaceFolders returns a boolean and applies later, so wait for the
+      // change event or getProjectName can still see an empty workspace.
+      let folderSubscription;
+      const foldersChanged = new Promise((resolve) => {
+        folderSubscription = vscode.workspace.onDidChangeWorkspaceFolders(resolve);
+      });
+      try {
+        assert.ok(
+          vscode.workspace.updateWorkspaceFolders(
+            0,
+            vscode.workspace.workspaceFolders?.length || 0,
+            {
+              uri: vscode.Uri.file(workspace),
+              name: 'Live Share Workspace',
+            },
+          ),
+          'workspace folder update was rejected',
+        );
+        await Promise.race([
+          foldersChanged,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('workspace folders never changed')), 5_000),
+          ),
+        ]);
+      } finally {
+        folderSubscription.dispose();
+      }
 
       registration = vscode.workspace.registerTextDocumentContentProvider('vsls-scc', {
         provideTextDocumentContent: () => 'const shared: string = "Live Share";\n',
