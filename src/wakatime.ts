@@ -182,7 +182,7 @@ export class Hackatime {
           this.updateStatusBarText('Hackatime Initializing...');
 
           this.checkApiKey();
-          this.checkUnauthorizedSettings();
+          this.checkUnauthorizedSettings().catch((e) => this.logger.warnException(e));
           this.maybeWarnAboutWakatimeExtension();
 
           this.setupEventListeners();
@@ -584,20 +584,19 @@ export class Hackatime {
     });
   }
 
-  private checkUnauthorizedSettings(): void {
+  private async checkUnauthorizedSettings(): Promise<void> {
     const unauthorizedSettings = [
       'hide_file_names',
       'hide_project_names'
     ]
 
-    let found: string[] = [];
-    for (const settingName of unauthorizedSettings) {
-      this.options.getSetting('settings', settingName, false, (setting: Setting) => {
-        if (setting.value === 'true') {
-          found.push(settingName);
-        }
-      })
-    }
+    // wait for every read before checking, getSetting reports back asynchronously
+    const values = await Promise.all(
+      unauthorizedSettings.map((settingName) =>
+        this.options.getSettingAsync<string>('settings', settingName).catch(() => null),
+      ),
+    );
+    const found = unauthorizedSettings.filter((_, i) => values[i] === 'true');
 
     if (found.length > 0) {
       vscode.window.showWarningMessage(
