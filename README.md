@@ -43,7 +43,7 @@ Both settings require restarting VS Code to take effect.
 
 Extension settings are stored in the INI file at `$HOME/.wakatime.cfg`.
 
-More information can be found from [wakatime-cli][wakatime-cli configs].
+More information can be found from [hackatime-cli][hackatime-cli configs].
 
 If using an online IDE like [gitpods](https://gitpod.io/), add your [api key][api key] to global ENV key `HACKATIME_API_KEY`.
 
@@ -63,7 +63,7 @@ Next, open your Developer Console to view logs and errors:
 
 `Help → Toggle Developer Tools`
 
-Errors outside the scope of vscode-hackatime go to `$HOME/.wakatime/wakatime.log` from [wakatime-cli][wakatime-cli help].
+Errors outside the scope of vscode-hackatime go to `$HOME/.wakatime/wakatime.log` from [hackatime-cli][hackatime-cli help].
 
 If your error message contains "won't send heartbeat due to backoff" then delete your `~/.wakatime/wakatime-internal.cfg` file to trigger an API connection so we can see the real error message.
 
@@ -72,7 +72,7 @@ The [How to Debug Plugins][how to debug] guide shows how to check when coding ac
 **Microsoft Windows Only:** Using Hackatime behind a corporate proxy? Try enabling your Windows Root Certs inside VS Code with the [win-ca][winca] extension:
 Press `Ctrl + Shift + X`, search for `win-ca`, press `Install`.
 
-For more general troubleshooting info, see the [wakatime-cli Troubleshooting Section][wakatime-cli help].
+For more general troubleshooting info, see the [hackatime-cli Troubleshooting Section][hackatime-cli help].
 
 ### SSH configuration
 
@@ -117,8 +117,8 @@ This repository is a fork of the official [WakaTime VSCode extension](https://gi
 
 [hackatime]: https://hackatime.hackclub.com/docs/editors/vs-code
 [api key]: https://hackatime.hackclub.com/my/wakatime_setup
-[wakatime-cli help]: https://github.com/wakatime/wakatime-cli/blob/develop/TROUBLESHOOTING.md
-[wakatime-cli configs]: https://github.com/wakatime/wakatime-cli/blob/develop/USAGE.md
+[hackatime-cli help]: https://github.com/hackclub/hackatime-cli/blob/develop/TROUBLESHOOTING.md
+[hackatime-cli configs]: https://github.com/hackclub/hackatime-cli/blob/develop/USAGE.md
 [how to debug]: https://hackatime.hackclub.com/docs
 [plugins status page]: https://hackatime.hackclub.com/docs
 [winca]: https://github.com/ukoloff/win-ca/tree/master/vscode
