@@ -47,6 +47,7 @@ export const COMMAND_LOG_FILE = 'hackatime.log_file';
 export const COMMAND_PROXY = 'hackatime.proxy';
 export const COMMAND_STATUS_BAR_CODING_ACTIVITY = 'hackatime.status_bar_coding_activity';
 export const COMMAND_STATUS_BAR_ENABLED = 'hackatime.status_bar_enabled';
+export const COMMAND_AI_TRANSCRIPT_SYNC = 'hackatime.ai_transcript_sync';
 export enum LogLevel {
   DEBUG = 0,
   INFO,

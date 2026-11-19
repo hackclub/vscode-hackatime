@@ -13,6 +13,7 @@ import {
   COMMAND_PROXY,
   COMMAND_STATUS_BAR_CODING_ACTIVITY,
   COMMAND_STATUS_BAR_ENABLED,
+  COMMAND_AI_TRANSCRIPT_SYNC,
   LogLevel,
 } from './constants';
 
@@ -66,6 +67,12 @@ export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_TOGGLE_UNKNOWN_PROJECT_ALERTS, function () {
       hackatime.toggleUnknownProjectAlerts();
+    }),
+  );
+
+  ctx.subscriptions.push(
+    vscode.commands.registerCommand(COMMAND_AI_TRANSCRIPT_SYNC, function () {
+      hackatime.promptAiTranscriptSync();
     }),
   );
 

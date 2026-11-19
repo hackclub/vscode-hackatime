@@ -120,3 +120,79 @@ suite('AI transcript sync is opt-in', function () {
     assert.strictEqual(args[0], '--sync-ai-activity');
   });
 });
+
+suite('"Hackatime: AI Transcript Sync" command', () => {
+  const vscode = require('vscode');
+  let original, picked, shownItems, placeHolder, updates, current;
+
+  setup(() => {
+    original = {
+      pick: vscode.window.showQuickPick,
+      info: vscode.window.showInformationMessage,
+      config: vscode.workspace.getConfiguration,
+    };
+    updates = [];
+    current = undefined; // unset, like a fresh install
+    vscode.window.showQuickPick = async (items, opts) => {
+      shownItems = items;
+      placeHolder = opts.placeHolder;
+      return items.find((i) => i.label === picked);
+    };
+    vscode.window.showInformationMessage = async () => undefined;
+    vscode.workspace.getConfiguration = () => ({
+      get: (key) => (key === 'hackatime.aiTranscriptSync.enabled' ? current : undefined),
+      update: async (key, value) => {
+        updates.push([key, value]);
+        current = value;
+      },
+    });
+  });
+
+  teardown(() => {
+    vscode.window.showQuickPick = original.pick;
+    vscode.window.showInformationMessage = original.info;
+    vscode.workspace.getConfiguration = original.config;
+  });
+
+  const harness = () => Object.create(Hackatime.prototype);
+
+  test('shows the current state and enabling flips the setting', async () => {
+    picked = 'Enable';
+    await harness().promptAiTranscriptSync();
+    assert.ok(placeHolder.includes('currently disabled'), placeHolder);
+    assert.strictEqual(shownItems.find((i) => i.label === 'Disable').description, '(current)');
+    assert.deepStrictEqual(updates, [['hackatime.aiTranscriptSync.enabled', true]]);
+  });
+
+  test('disabling turns it back off', async () => {
+    current = true;
+    picked = 'Disable';
+    await harness().promptAiTranscriptSync();
+    assert.ok(placeHolder.includes('currently enabled'), placeHolder);
+    assert.deepStrictEqual(updates, [['hackatime.aiTranscriptSync.enabled', false]]);
+  });
+
+  test('picking the current state or closing the picker changes nothing', async () => {
+    picked = 'Disable';
+    await harness().promptAiTranscriptSync();
+    picked = undefined;
+    await harness().promptAiTranscriptSync();
+    assert.deepStrictEqual(updates, []);
+  });
+
+  test('the manifest lists the command, hides it on web and defaults the setting to off', () => {
+    const pkg = require('../package.json');
+    const command = pkg.contributes.commands.find(
+      (c) => c.command === 'hackatime.ai_transcript_sync',
+    );
+    assert.strictEqual(command.title, 'Hackatime: AI Transcript Sync');
+    const palette = pkg.contributes.menus.commandPalette.find(
+      (m) => m.command === 'hackatime.ai_transcript_sync',
+    );
+    assert.strictEqual(palette.when, '!isWeb');
+    assert.strictEqual(
+      pkg.contributes.configuration.properties['hackatime.aiTranscriptSync.enabled'].default,
+      false,
+    );
+  });
+});

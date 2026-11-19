@@ -505,6 +505,39 @@ export class Hackatime {
     }
   }
 
+  // F1 > "Hackatime: AI Transcript Sync", the same switch as the hackatime.aiTranscriptSync.enabled setting
+  public async promptAiTranscriptSync(): Promise<void> {
+    const enabled = this.isAiTranscriptSyncEnabled();
+    const choice = await vscode.window.showQuickPick(
+      [
+        {
+          label: 'Disable',
+          description: enabled ? undefined : '(current)',
+          detail: "Don't read AI coding tools' transcripts. The default.",
+          enable: false,
+        },
+        {
+          label: 'Enable',
+          description: enabled ? '(current)' : undefined,
+          detail:
+            'Let wakatime-cli read local Claude Code, Codex, Cursor, Amp and other AI tool transcripts and send the AI activity it finds to Hackatime.',
+          enable: true,
+        },
+      ],
+      {
+        placeHolder: `AI transcript sync is currently ${enabled ? 'enabled' : 'disabled'}`,
+        ignoreFocusOut: true,
+      },
+    );
+    if (!choice || choice.enable === enabled) return;
+    await vscode.workspace
+      .getConfiguration()
+      .update('hackatime.aiTranscriptSync.enabled', choice.enable, vscode.ConfigurationTarget.Global);
+    vscode.window.showInformationMessage(
+      choice.enable ? 'AI transcript sync enabled.' : 'AI transcript sync disabled.',
+    );
+  }
+
   public promptToDisable(): void {
     this.options.getSetting('settings', 'disabled', false, (setting: Setting) => {
       const previousValue = this.disabled;

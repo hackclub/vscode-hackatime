@@ -127,8 +127,20 @@
       {
         "command": "hackatime.log_file",
         "title": "Hackatime: Open Log File..."
+      },
+      {
+        "command": "hackatime.ai_transcript_sync",
+        "title": "Hackatime: AI Transcript Sync"
       }
     ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "hackatime.ai_transcript_sync",
+          "when": "!isWeb"
+        }
+      ]
+    },
     "configuration": {
       "title": "Hackatime",
       "properties": {
