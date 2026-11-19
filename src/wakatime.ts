@@ -1255,8 +1255,36 @@ export class Hackatime {
     await this._sendHeartbeats();
   }
 
+  // reading AI tools' transcripts (Claude Code, Codex, Cursor, Amp...) is opt-in
+  private isAiTranscriptSyncEnabled(): boolean {
+    return (
+      vscode.workspace.getConfiguration().get<boolean>('hackatime.aiTranscriptSync.enabled') ===
+      true
+    );
+  }
+
+  // whether this wakatime-cli build knows a flag, checked once per binary via --help. the
+  // pinned cli for old macOS predates newer flags and would fail on an unknown one.
+  private cliFlagSupport?: Record<string, Promise<boolean>>;
+  private cliSupportsFlag(binary: string, flag: string): Promise<boolean> {
+    this.cliFlagSupport ??= {};
+    const key = `${binary}\n${flag}`;
+    if (!this.cliFlagSupport[key]) {
+      this.cliFlagSupport[key] = new Promise((resolve) => {
+        try {
+          child_process.execFile(binary, ['--help'], Desktop.buildOptions(), (_error, stdout) =>
+            resolve(String(stdout || '').includes(flag)),
+          );
+        } catch {
+          resolve(false);
+        }
+      });
+    }
+    return this.cliFlagSupport[key];
+  }
+
   private syncAIHeartbeatsDebounced(): void {
-    if (this.disabled) return;
+    if (this.disabled || !this.isAiTranscriptSyncEnabled()) return;
     if (this.syncAIHeartbeatsDebounce) clearTimeout(this.syncAIHeartbeatsDebounce);
 
     this.syncAIHeartbeatsDebounce = setTimeout(() => {
@@ -1266,6 +1294,7 @@ export class Hackatime {
   }
 
   private async syncAIHeartbeats(): Promise<void> {
+    if (!this.isAiTranscriptSyncEnabled()) return;
     if (!this.dependencies.isCliInstalled()) return;
 
     const user_agent =
@@ -1337,6 +1366,14 @@ export class Hackatime {
     }
 
     args.push('--time', String(heartbeat.time));
+
+    // wakatime-cli parses AI transcripts on every heartbeat unless told not to
+    if (
+      !this.isAiTranscriptSyncEnabled() &&
+      (await this.cliSupportsFlag(this.dependencies.getCliLocation(), '--sync-ai-disabled'))
+    ) {
+      args.push('--sync-ai-disabled');
+    }
 
     if (heartbeat.plugin) {
       args.push('--plugin', Utils.quote(heartbeat.plugin));
