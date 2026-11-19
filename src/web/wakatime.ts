@@ -157,8 +157,14 @@ export class Hackatime {
     const showCodingActivity = this.config.get('hackatime.status_bar_coding_activity');
     this.showCodingActivity = showCodingActivity !== 'false';
 
-    this.updateStatusBarText();
-    this.updateStatusBarTooltip('Hackatime: Initialized');
+    // don't overwrite the "not logged in" status checkApiKey just set
+    if (this.hasValidApiKey()) {
+      this.updateStatusBarText();
+      this.updateStatusBarTooltip('Hackatime: Initialized');
+    } else {
+      this.updateStatusBarText(NOT_LOGGED_IN_TEXT);
+      this.updateStatusBarTooltip(NOT_LOGGED_IN_TOOLTIP);
+    }
     this.getCodingActivity();
   }
 

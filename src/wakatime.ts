@@ -209,9 +209,17 @@ export class Hackatime {
 
               this.dependencies.checkAndInstallCli(() => {
                 this.logger.debug('Hackatime initialized');
-                this.updateStatusBarText();
-                this.updateStatusBarTooltip('Hackatime: Initialized');
-                this.getCodingActivity();
+                // don't overwrite the "not logged in" status checkApiKey just set
+                this.options.hasApiKey((hasApiKey) => {
+                  if (hasApiKey) {
+                    this.updateStatusBarText();
+                    this.updateStatusBarTooltip('Hackatime: Initialized');
+                  } else {
+                    this.updateStatusBarText(NOT_LOGGED_IN_TEXT);
+                    this.updateStatusBarTooltip(NOT_LOGGED_IN_TOOLTIP);
+                  }
+                  this.getCodingActivity();
+                });
               });
             },
           );
