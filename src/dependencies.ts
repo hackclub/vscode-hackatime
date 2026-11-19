@@ -1,4 +1,4 @@
-import * as adm_zip from 'adm-zip';
+import adm_zip = require('adm-zip');
 import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
