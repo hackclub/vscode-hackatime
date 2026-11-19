@@ -1,6 +1,18 @@
 
 # Changelog
 
+## 30.2.2005 (2026-11-19)
+
+- Based on upstream vscode-wakatime v30.2.1.
+- Coding time is now saved while you're logged out and syncs once you log in. Also works in VS Code for the Web.
+- The login reminder is now a regular notification instead of a blocking dialog.
+- Warn when a project sits inside a Git repository in the home folder, Desktop, Documents or Downloads, which sent its time to the wrong project.
+- Fix Live Share tracking for guests and hosts.
+- Fix the unauthorized settings warning never showing.
+- Read and write settings through wakatime-cli.
+- Replace the deprecated request library, escape the login error page, and drop unused dependencies.
+- Don't try to update wakatime-cli when the version check fails.
+
 ## 30.2.2004 (2026-07-14)
 
 - Based on upstream vscode-wakatime v30.2.1.
