@@ -116,4 +116,11 @@ export interface AIExtension {
   extensionIds: string[];
 }
 
-export const ALLOWED_SCHEMES = ['file', 'vscode-chat-code-block', 'openai-codex', 'vscode-remote'];
+export const ALLOWED_SCHEMES = [
+  'file',
+  'vscode-chat-code-block',
+  'openai-codex',
+  'vscode-remote',
+  'vsls',
+  'vsls-scc',
+];

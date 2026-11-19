@@ -130,6 +130,10 @@ export class Utils {
     return uri.scheme === 'vscode-remote';
   }
 
+  public static isLiveShareUri(uri: vscode.Uri): boolean {
+    return uri.scheme === 'vsls' || uri.scheme === 'vsls-scc';
+  }
+
   public static apiUrlToDashboardUrl(url: string): string {
     url = url
       .replace('://api.', '://')
@@ -189,6 +193,15 @@ export class Utils {
     const doc = document ?? vscode.window.activeTextEditor?.document;
     if (doc) {
       const file = doc.fileName;
+      if (Utils.isLiveShareUri(doc.uri)) {
+        // the cli resolves unrecognised uri schemes relative to its working directory.
+        // an absolute virtual path keeps both the file identity and project independent of it.
+        return vscode.Uri.joinPath(
+          vscode.Uri.file('/__liveshare__'),
+          doc.uri.authority,
+          doc.uri.path,
+        ).fsPath;
+      }
       if (Utils.isRemoteUri(doc.uri)) {
         return `${doc.uri.authority}${doc.uri.path}`.replace('ssh-remote+', 'ssh://');
         // TODO: how to support 'dev-container', 'attached-container', 'wsl', and 'codespaces' schemes?

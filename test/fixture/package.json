@@ -1,0 +1,12 @@
+{
+  "name": "hackatime-test-host",
+  "version": "0.0.0",
+  "publisher": "hackatime",
+  "engines": {
+    "vscode": "^1.89.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "*"
+  ]
+}

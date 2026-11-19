@@ -55,9 +55,9 @@ export class Hackatime {
   private lineChanges: LineCounts = { ai: {}, human: {} };
   private filesWithHumanTyping: HumanTypingMap = {};
 
-  constructor(logger: Logger, config: Memento) {
+  constructor(logger: Logger, private readonly context: vscode.ExtensionContext) {
     this.logger = logger;
-    this.config = config;
+    this.config = context.globalState;
   }
 
   public initialize(): void {
@@ -65,8 +65,7 @@ export class Hackatime {
       this.logger.setLevel(LogLevel.DEBUG);
     }
 
-    const extension = vscode.extensions.getExtension('hackatime.hackatime-time-tracker');
-    this.extension = (extension != undefined && extension.packageJSON) || { version: '0.0.0' };
+    this.extension = this.context.extension.packageJSON;
     this.agentName = Utils.getEditorName();
 
     this.hasAICapabilities = Utils.hasAIExtensions();
