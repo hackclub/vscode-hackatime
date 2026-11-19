@@ -26,3 +26,5 @@ tags.temp
 .vscode-test/**
 .vscode-test.mjs
 tsconfig.test.json
+.github/**
+scripts/**
