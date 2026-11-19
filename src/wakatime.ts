@@ -23,6 +23,7 @@ import { Options, Setting } from './options';
 
 import { Dependencies } from './dependencies';
 import { Desktop } from './desktop';
+import { findGitRoot, isTooBroadGitRoot } from './git-root';
 import { Logger } from './logger';
 
 export class Hackatime {
@@ -77,7 +78,7 @@ export class Hackatime {
   private liveShare?: LiveShare;
   private eventListenerVersion = 0;
 
-  private pendingMissingGitRepoPrompt?: string = undefined;
+  private pendingGitRepoPrompt?: string = undefined;
 
   constructor(private readonly context: vscode.ExtensionContext, logger: Logger) {
     this.extensionPath = context.extensionPath;
@@ -1132,7 +1133,10 @@ export class Hackatime {
 
     if (doc.isUntitled) heartbeat.is_unsaved_entity = true;
 
-    await this.maybePromptForMissingGitRepo(folder, project);
+    // not awaited: the toast stays open until clicked, and heartbeats shouldn't wait on it
+    this.maybePromptForGitRepoIssues(folder, project).catch((e) =>
+      this.logger.debugException(e),
+    );
 
     if (Utils.isRemoteUri(doc.uri) || Utils.isLiveShareUri(doc.uri)) {
       try {
@@ -1757,32 +1761,50 @@ export class Hackatime {
     }
   }
 
-  private async maybePromptForMissingGitRepo(folder: string, project: string): Promise<void> {
+  // warns when a project has no git repo, or only sits inside one that's too broad to be a
+  // project (a `git init` in the home folder or Desktop), since wakatime-cli names the project
+  // after the nearest repo and would credit all the time to that folder instead.
+  private async maybePromptForGitRepoIssues(folder: string, project: string): Promise<void> {
     if (!folder || !project) return;
     if (this.isUnknownProjectPromptDisabled()) return;
 
     const projectKey = this.normalizeProjectKey(folder);
     if (this.getDismissedUnknownProjectFolders().includes(projectKey)) return;
 
-    if (this.pendingMissingGitRepoPrompt === projectKey) return;
+    // one toast at a time, heartbeats keep coming while it's open
+    if (this.pendingGitRepoPrompt) return;
 
-    if (this.hasGitRepository(folder) || this.getWakatimeProjectFile(folder)) return;
+    // a .wakatime-project file wins over git when wakatime-cli picks the project
+    if (this.getWakatimeProjectFile(folder)) return;
 
-    this.pendingMissingGitRepoPrompt = projectKey;
+    const gitRoot = findGitRoot(folder, Hackatime.MAX_PROJECT_SEARCH_DEPTH);
+    const broadRoot = !!gitRoot && isTooBroadGitRoot(gitRoot, os.homedir(), Desktop.isWindows());
+    if (gitRoot && !broadRoot) return;
+
+    this.pendingGitRepoPrompt = projectKey;
 
     try {
       const gitInstalled = await this.isGitInstalled();
-      const choice = await vscode.window.showInformationMessage(
-        `Hackatime may not be properly tracking time in ${project}". No Git repository was found.`,
-        ...(gitInstalled
-          ? ['Initialize repository', 'Ignore for project', 'Disable alerts']
-          : ['Install Git', 'Ignore for project', 'Disable alerts']),
-      );
+      const initLabel = broadRoot ? 'Initialize repository here' : 'Initialize repository';
+      const actions = gitInstalled
+        ? [initLabel, 'Ignore for project', 'Disable alerts']
+        : ['Install Git', 'Ignore for project', 'Disable alerts'];
+      const choice = broadRoot
+        ? await vscode.window.showWarningMessage(
+            `Hackatime is tracking "${project}" as "${path.basename(gitRoot) || gitRoot}" because of a Git repository in ${gitRoot}. Initialize a repository for this project to track its time separately.`,
+            ...actions,
+          )
+        : await vscode.window.showInformationMessage(
+            `Hackatime may not be properly tracking time in "${project}". No Git repository was found.`,
+            ...actions,
+          );
 
-      if (choice === 'Initialize repository' && gitInstalled) {
+      if (choice === initLabel && gitInstalled) {
         await this.initGitRepository(folder);
-        if (this.hasGitRepository(folder)) {
-           await this.dismissUnknownProjectPromptForProject(projectKey);
+        // only stop asking once the project really is its own repo root
+        const newRoot = findGitRoot(folder);
+        if (newRoot && this.normalizeProjectKey(newRoot) === projectKey) {
+          await this.dismissUnknownProjectPromptForProject(projectKey);
         }
         return;
       }
@@ -1801,8 +1823,8 @@ export class Hackatime {
         await vscode.workspace.getConfiguration().update('hackatime.unknownProjectPrompt.status', false, vscode.ConfigurationTarget.Global);
       }
     } finally {
-      if (this.pendingMissingGitRepoPrompt === projectKey) {
-        this.pendingMissingGitRepoPrompt = undefined;
+      if (this.pendingGitRepoPrompt === projectKey) {
+        this.pendingGitRepoPrompt = undefined;
       }
     }
   }
@@ -1818,26 +1840,6 @@ export class Hackatime {
         resolve(true);
       });
     });
-  }
-
-  private hasGitRepository(folder: string): boolean {
-    let current = path.resolve(folder);
-    let depth = 0;
-
-    while (depth < Hackatime.MAX_PROJECT_SEARCH_DEPTH) {
-      if (fs.existsSync(path.join(current, '.git'))) {
-        return true;
-      }
-
-      const parent = path.dirname(current);
-      if (parent === current) {
-        return false;
-      }
-      current = parent;
-      depth += 1;
-    }
-
-    return false;
   }
 
   private getWakatimeProjectFile(folder: string): string {
