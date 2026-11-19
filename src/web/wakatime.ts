@@ -12,6 +12,21 @@ import { Logger } from './logger';
 import { Memento } from 'vscode';
 import { FileSelectionMap, HumanTypingMap, LineCounts, LinesInFiles } from '../types';
 import { Utils } from '../utils';
+import {
+  LOGIN_REMINDER,
+  NOT_LOGGED_IN_TEXT,
+  NOT_LOGGED_IN_TOOLTIP,
+  SAVED_ACTIVITY_ADD,
+  SAVED_ACTIVITY_DISCARD,
+  savedActivityPrompt,
+} from '../saved-activity';
+
+interface QueuedHeartbeat {
+  id: string;
+  // captured with no api key, so it needs the user's ok before it's sent to their account
+  loggedOut: boolean;
+  heartbeat: object;
+}
 
 export class Hackatime {
   private agentName: string;
@@ -51,6 +66,14 @@ export class Hackatime {
   private lastApiKeyPrompted: number = 0;
   private heartbeats: WebHeartbeat[] = [];
   private lastSent: number = 0;
+  // heartbeats waiting to be sent, kept in globalState so they survive reloads. not in
+  // setKeysForSync on purpose: they belong to this computer, not to a synced account.
+  private static readonly QUEUE_KEY = 'hackatime.queuedHeartbeats';
+  private static readonly QUEUE_MAX = 5000;
+  private static readonly FLUSH_BATCH = 25;
+  private static readonly FLUSH_MAX_BATCHES = 40;
+  private flushing = false;
+  private savedActivityDeferred = false;
   private linesInFiles: LinesInFiles = {};
   private lineChanges: LineCounts = { ai: {}, human: {} };
   private filesWithHumanTyping: HumanTypingMap = {};
@@ -214,13 +237,14 @@ export class Hackatime {
       password: hidden,
       validateInput: Utils.apiKeyInvalid.bind(this),
     };
-    vscode.window.showInputBox(promptOptions).then((val) => {
+    vscode.window.showInputBox(promptOptions).then(async (val) => {
       if (val != undefined) {
         const invalid = Utils.apiKeyInvalid(val);
         if (!invalid) {
-          this.config.update('hackatime.apiKey', val);
+          await this.config.update('hackatime.apiKey', val);
           this.updateStatusBarText();
           this.updateStatusBarTooltip('Hackatime: Initialized');
+          await this.flushQueue();
         } else {
           this.updateStatusBarText('Invalid Hackatime api key');
           this.updateStatusBarTooltip(invalid);
@@ -364,8 +388,24 @@ export class Hackatime {
 
   private checkApiKey(): void {
     this.hasApiKey((hasApiKey) => {
-      if (!hasApiKey) this.promptForApiKey();
+      // with a key (maybe synced from another device), send whatever was queued last time
+      if (hasApiKey) this.flushQueue();
+      else this.remindToLogin();
     });
+  }
+
+  // a normal toast instead of a modal, since tracking keeps working while logged out
+  private async remindToLogin(): Promise<void> {
+    if (this.showStatusBar) {
+      this.updateStatusBarText(NOT_LOGGED_IN_TEXT);
+      this.updateStatusBarTooltip(NOT_LOGGED_IN_TOOLTIP);
+    }
+    const choice = await vscode.window.showInformationMessage(LOGIN_REMINDER, 'Log in', 'Later');
+    if (choice === 'Log in') await this.promptForApiKey();
+  }
+
+  private hasValidApiKey(): boolean {
+    return !Utils.apiKeyInvalid(this.config.get('hackatime.apiKey') || '');
   }
 
   private hasApiKey(callback: (arg0: boolean) => void): void {
@@ -751,34 +791,41 @@ export class Hackatime {
   }
 
   private async sendHeartbeats(): Promise<void> {
-    this.hasApiKey((hasApiKey) => {
-      if (hasApiKey) {
-        this._sendHeartbeats();
-      } else {
-        this.promptForApiKey();
-      }
-    });
-  }
-
-  private async _sendHeartbeats() {
     if (this.heartbeats.length === 0) return;
 
     this.lastSent = Date.now();
-
-    const plugin = this.getPlugin();
-    const payload = JSON.stringify(
-      this.heartbeats.map((h) => {
-        const { type, ...rest } = h;
-        return {
-          type: type ?? 'file',
-          plugin,
-          ...rest,
-        };
-      }),
-    );
+    const payload = this.toPayload(this.heartbeats);
     this.heartbeats = [];
 
-    this.logger.debug(`Sending heartbeats to API: ${payload}`);
+    if (!this.hasValidApiKey()) {
+      // keep them for later instead of nagging; they sync once the user logs in
+      this.enqueue(payload, true);
+      if (this.showStatusBar) {
+        this.updateStatusBarText(NOT_LOGGED_IN_TEXT);
+        this.updateStatusBarTooltip(NOT_LOGGED_IN_TOOLTIP);
+      }
+      return;
+    }
+
+    await this._sendHeartbeats(payload);
+  }
+
+  private toPayload(heartbeats: WebHeartbeat[]): object[] {
+    const plugin = this.getPlugin();
+    return heartbeats.map((h) => {
+      const { type, ...rest } = h;
+      return {
+        type: type ?? 'file',
+        plugin,
+        ...rest,
+      };
+    });
+  }
+
+  // posts one batch, returning the http status, or 0 when the request never got a response
+  private async postHeartbeats(payload: object[]): Promise<number> {
+    const body = JSON.stringify(payload);
+    this.logger.debug(`Sending heartbeats to API: ${body}`);
 
     const apiKey = this.config.get('hackatime.apiKey');
     const apiUrl = this.getApiUrl();
@@ -791,43 +838,139 @@ export class Hackatime {
           'Content-Type': 'application/json',
           'X-Machine-Name': vscode.env.appHost,
         },
-        body: payload,
+        body,
       });
-      const parsedJSON = await response.json();
-      if (response.status == 200 || response.status == 201 || response.status == 202) {
-        if (this.showStatusBar) this.getCodingActivity();
-      } else {
-        this.logger.warn(`API Error ${response.status}: ${parsedJSON}`);
-        if (response && response.status == 401) {
-          const error_msg = 'Invalid Hackatime Api Key';
-          if (this.showStatusBar) {
-            this.updateStatusBarText('Hackatime Error');
-            this.updateStatusBarTooltip(`Hackatime: ${error_msg}`);
-          }
-          this.logger.error(error_msg);
-          const now: number = Date.now();
-          if (this.lastApiKeyPrompted < now - 86400000) {
-            // only prompt once per day
-            this.promptForApiKey(false);
-            this.lastApiKeyPrompted = now;
-          }
-        } else {
-          const error_msg = `Error sending heartbeats (${response.status}); Check your browser console for more details.`;
-          if (this.showStatusBar) {
-            this.updateStatusBarText('Hackatime Error');
-            this.updateStatusBarTooltip(`Hackatime: ${error_msg}`);
-          }
-          this.logger.error(error_msg);
-        }
+      if (!Hackatime.isSuccess(response.status)) {
+        const text = await response.text().catch(() => '');
+        this.logger.warn(`API Error ${response.status}: ${text}`);
       }
+      return response.status;
     } catch (ex) {
       this.logger.warn(`API Error: ${ex}`);
-      const error_msg = `Error sending heartbeats; Check your browser console for more details.`;
+      return 0;
+    }
+  }
+
+  private static isSuccess(status: number): boolean {
+    return status == 200 || status == 201 || status == 202;
+  }
+
+  // worth trying again later: offline, server trouble, rate limits, or a bad key the user
+  // can still fix. anything else means the server rejected the heartbeats themselves.
+  private static isRetryable(status: number): boolean {
+    return status === 0 || status === 401 || status === 429 || status >= 500;
+  }
+
+  private async _sendHeartbeats(payload: object[]) {
+    const status = await this.postHeartbeats(payload);
+
+    if (Hackatime.isSuccess(status)) {
+      if (this.showStatusBar) this.getCodingActivity();
+      await this.flushQueue();
+      return;
+    }
+
+    if (Hackatime.isRetryable(status)) this.enqueue(payload, false);
+
+    if (status == 401) {
+      const error_msg = 'Invalid Hackatime Api Key';
       if (this.showStatusBar) {
         this.updateStatusBarText('Hackatime Error');
         this.updateStatusBarTooltip(`Hackatime: ${error_msg}`);
       }
       this.logger.error(error_msg);
+      const now: number = Date.now();
+      if (this.lastApiKeyPrompted < now - 86400000) {
+        // only prompt once per day
+        this.promptForApiKey(false);
+        this.lastApiKeyPrompted = now;
+      }
+      return;
+    }
+
+    const error_msg = status
+      ? `Error sending heartbeats (${status}); Check your browser console for more details.`
+      : 'Error sending heartbeats; Check your browser console for more details.';
+    if (this.showStatusBar) {
+      this.updateStatusBarText('Hackatime Error');
+      this.updateStatusBarTooltip(`Hackatime: ${error_msg}`);
+    }
+    this.logger.error(error_msg);
+  }
+
+  private getQueue(): QueuedHeartbeat[] {
+    const queue = this.config.get<QueuedHeartbeat[]>(Hackatime.QUEUE_KEY);
+    return Array.isArray(queue) ? queue : [];
+  }
+
+  // every read-modify-write of the queue happens without an await in between, so concurrent
+  // sends can't overwrite each other's changes
+  private setQueue(queue: QueuedHeartbeat[]): Thenable<void> {
+    return this.config.update(Hackatime.QUEUE_KEY, queue.slice(-Hackatime.QUEUE_MAX));
+  }
+
+  private enqueue(payload: object[], loggedOut: boolean): Thenable<void> {
+    const added = payload.map((heartbeat) => ({
+      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+      loggedOut,
+      heartbeat,
+    }));
+    return this.setQueue(this.getQueue().concat(added));
+  }
+
+  // sends queued heartbeats in small batches. activity captured while logged out needs the
+  // user's ok first, since on a shared computer it may belong to someone else.
+  private async flushQueue(): Promise<void> {
+    if (this.flushing || !this.hasValidApiKey()) return;
+    this.flushing = true;
+    try {
+      if (!this.savedActivityDeferred && this.getQueue().some((e) => e.loggedOut)) {
+        await this.askAboutSavedActivity();
+      }
+
+      for (let i = 0; i < Hackatime.FLUSH_MAX_BATCHES; i++) {
+        const batch = this.getQueue()
+          .filter((e) => !e.loggedOut)
+          .slice(0, Hackatime.FLUSH_BATCH);
+        if (batch.length === 0) break;
+
+        const status = await this.postHeartbeats(batch.map((e) => e.heartbeat));
+        if (!Hackatime.isSuccess(status) && Hackatime.isRetryable(status)) break;
+        if (!Hackatime.isSuccess(status)) {
+          this.logger.warn(`Dropping ${batch.length} queued heartbeats rejected with ${status}`);
+        }
+
+        const done = new Set(batch.map((e) => e.id));
+        await this.setQueue(this.getQueue().filter((e) => !done.has(e.id)));
+      }
+    } finally {
+      this.flushing = false;
+    }
+  }
+
+  private async askAboutSavedActivity(): Promise<void> {
+    const loggedOut = this.getQueue().filter((e) => e.loggedOut);
+    const { message, detail } = savedActivityPrompt(
+      loggedOut.length,
+      loggedOut.map((e) => Number((e.heartbeat as WebHeartbeat).time)),
+    );
+    const choice = await vscode.window.showWarningMessage(
+      message,
+      { modal: true, detail },
+      SAVED_ACTIVITY_ADD,
+      SAVED_ACTIVITY_DISCARD,
+    );
+
+    const asked = new Set(loggedOut.map((e) => e.id));
+    if (choice === SAVED_ACTIVITY_ADD) {
+      await this.setQueue(
+        this.getQueue().map((e) => (asked.has(e.id) ? { ...e, loggedOut: false } : e)),
+      );
+    } else if (choice === SAVED_ACTIVITY_DISCARD) {
+      await this.setQueue(this.getQueue().filter((e) => !asked.has(e.id)));
+    } else {
+      // closed without answering: keep it saved and ask again next session
+      this.savedActivityDeferred = true;
     }
   }
 

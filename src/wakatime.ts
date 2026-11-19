@@ -25,6 +25,15 @@ import { Dependencies } from './dependencies';
 import { Desktop } from './desktop';
 import { findGitRoot, isTooBroadGitRoot } from './git-root';
 import { Logger } from './logger';
+import { discardOfflineQueue, getOfflineCount, getOfflineTimes } from './offline-queue';
+import {
+  LOGIN_REMINDER,
+  NOT_LOGGED_IN_TEXT,
+  NOT_LOGGED_IN_TOOLTIP,
+  SAVED_ACTIVITY_ADD,
+  SAVED_ACTIVITY_DISCARD,
+  savedActivityPrompt,
+} from './saved-activity';
 
 export class Hackatime {
   private static readonly MAX_PROJECT_SEARCH_DEPTH = 500;
@@ -355,6 +364,7 @@ export class Hackatime {
       const apiKey = await Utils.fetchApiKeyWithToken(apiUrl, token);
 
       this.logger.debug('Successfully obtained API key from OAuth');
+      if (!(await this.confirmSavedActivityBeforeLogin())) return;
       const settings = [
         { key: 'api_url', value: apiUrl + '/api/hackatime/v1' },
         { key: 'api_key', value: apiKey },
@@ -401,10 +411,11 @@ export class Hackatime {
       password: hidden,
       validateInput: Utils.apiKeyInvalid.bind(this),
     };
-    vscode.window.showInputBox(promptOptions).then((val) => {
+    vscode.window.showInputBox(promptOptions).then(async (val) => {
       if (val != undefined) {
         const invalid = Utils.apiKeyInvalid(val);
         if (!invalid) {
+          if (!(await this.confirmSavedActivityBeforeLogin())) return;
           this.options.setSetting('settings', 'api_key', val, false);
           this.updateStatusBarText();
           this.updateStatusBarTooltip('Hackatime: Initialized');
@@ -584,8 +595,64 @@ export class Hackatime {
 
   private checkApiKey(): void {
     this.options.hasApiKey((hasApiKey) => {
-      if (!hasApiKey) this.loginWithHackatime();
+      if (!hasApiKey) this.remindToLogin();
     });
+  }
+
+  // a normal toast instead of a modal, since tracking keeps working while logged out
+  private async remindToLogin(): Promise<void> {
+    if (this.showStatusBar) {
+      this.updateStatusBarText(NOT_LOGGED_IN_TEXT);
+      this.updateStatusBarTooltip(NOT_LOGGED_IN_TOOLTIP);
+    }
+    const choice = await vscode.window.showInformationMessage(LOGIN_REMINDER, 'Log in', 'Later');
+    if (choice === 'Log in') await this.loginWithHackatime();
+  }
+
+  // asks before a fresh login picks up activity saved while logged out, which on a shared
+  // computer may belong to someone else. returns false if the key shouldn't be saved.
+  private async confirmSavedActivityBeforeLogin(): Promise<boolean> {
+    if (!Utils.apiKeyInvalid(await this.options.getApiKey())) return true; // not a fresh login
+    if (!this.dependencies?.isCliInstalled()) return true;
+
+    const binary = this.dependencies.getCliLocation();
+    const options = Desktop.buildOptions() as child_process.ExecFileOptions;
+    let count = 0;
+    let times: number[] = [];
+    try {
+      count = await getOfflineCount(binary, options);
+      if (count === 0) return true;
+      times = await getOfflineTimes(binary, count, options);
+    } catch (e) {
+      this.logger.warnException(e);
+      return true; // can't read the queue, so there's nothing to show; don't block login
+    }
+
+    const { message, detail } = savedActivityPrompt(count, times);
+    const choice = await vscode.window.showWarningMessage(
+      message,
+      { modal: true, detail },
+      SAVED_ACTIVITY_ADD,
+      SAVED_ACTIVITY_DISCARD,
+    );
+
+    if (choice === SAVED_ACTIVITY_ADD) return true;
+    if (choice === SAVED_ACTIVITY_DISCARD) {
+      try {
+        await discardOfflineQueue(binary, options);
+        return true;
+      } catch (e) {
+        this.logger.warnException(e);
+        vscode.window.showErrorMessage(
+          "Hackatime couldn't clear the saved activity, so you weren't logged in. Close other editors using Hackatime or WakaTime and try again.",
+        );
+        return false;
+      }
+    }
+    vscode.window.showInformationMessage(
+      'Login cancelled. The saved activity is still on this computer.',
+    );
+    return false;
   }
 
   private async checkUnauthorizedSettings(): Promise<void> {
@@ -1168,12 +1235,9 @@ export class Hackatime {
   }
 
   private async sendHeartbeats(): Promise<void> {
-    const apiKey = await this.options.getApiKey();
-    if (apiKey) {
-      await this._sendHeartbeats();
-    } else {
-      await this.promptForApiKey();
-    }
+    // sent even without an api key: wakatime-cli exits with 104 but keeps them in its
+    // offline queue, and they sync once the user logs in
+    await this._sendHeartbeats();
   }
 
   private syncAIHeartbeatsDebounced(): void {
@@ -1365,6 +1429,13 @@ export class Hackatime {
           this.updateStatusBarTooltip(`Hackatime: ${error_msg}`);
         }
         this.logger.error(error_msg);
+      } else if (code == 104 && Utils.apiKeyInvalid(apiKey)) {
+        // not logged in: the cli queued the heartbeats, so just say so instead of nagging
+        if (this.showStatusBar) {
+          this.updateStatusBarText(NOT_LOGGED_IN_TEXT);
+          this.updateStatusBarTooltip(NOT_LOGGED_IN_TOOLTIP);
+        }
+        this.logger.debug('Not logged in (104); heartbeats saved to the offline queue');
       } else if (code == 104) {
         const error_msg = 'Invalid Api Key (104); Make sure your Api Key is correct!';
         if (this.showStatusBar) {
