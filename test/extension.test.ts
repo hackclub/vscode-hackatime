@@ -1,8 +1,6 @@
 import * as assert from 'assert';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { Utils } from '../src/utils';
-import { Hackatime } from '../src/wakatime';
 
 const mockEnv = (overrides: Partial<typeof vscode.env>): typeof vscode.env => {
   return {

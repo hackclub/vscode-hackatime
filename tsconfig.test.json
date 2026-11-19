@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "mocha"]
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "out/hackatime-master", ".vscode-test"]
+}

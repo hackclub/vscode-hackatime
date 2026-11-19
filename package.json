@@ -75,7 +75,8 @@
     "release:tag": "git tag \"v$(node -p \"require('./package.json').version\")\" && git push origin \"v$(node -p \"require('./package.json').version\")\"",
     "publish:hackatime": "npx vsce publish --allow-star-activation && npm run release:tag",
     "publish:web": "npx ovsx publish",
-    "test": "npm run compile:dev && node ./node_modules/vscode/bin/test"
+    "test": "npm run compile:test && vscode-test",
+    "compile:test": "tsc -p ./tsconfig.test.json"
   },
   "contributes": {
     "commands": [
@@ -182,6 +183,8 @@
     "@types/vscode": "^1.89.0",
     "@types/webpack": "^5.28.5",
     "@types/which": "^3.0.4",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/test-web": "^0.0.81",
     "adm-zip": "0.6.1",
     "azdata": "^1.0.0",
