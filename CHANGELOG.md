@@ -1,6 +1,16 @@
 
 # Changelog
 
+## 30.2.2007 (2026-11-19)
+
+- Based on upstream vscode-wakatime v30.2.1.
+- Fix AI transcript sync not staying off.
+- Don't block sending heartbeats when wakatime-cli hangs while starting up.
+- Added OAuth state for security
+- Better login server restart handling + 5 minute timeout
+- Fixed edge case where wakatime-cli quit early, and log a warning whenever that loses heartbeats.
+- New versions are now published using GitHub Actions.
+
 ## 30.2.2006 (2026-11-19)
 
 - Based on upstream vscode-wakatime v30.2.1.
