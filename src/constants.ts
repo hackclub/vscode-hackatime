@@ -34,6 +34,11 @@ export const COMMON_AI_EXTENSIONS: AIExtension[] = [
 ];
 
 export const HACKATIME_CLIENT_ID = 'd6TwlKUqYWgJSDzROv9v45eFArFhnNmuWVtlTHO5z3s';
+export const HACKATIME_OAUTH_BASE_URL = 'https://hackatime.hackclub.com';
+// must match the redirect uri registered for the client id above
+export const OAUTH_CALLBACK_PORT = 54321;
+// how long the login callback server waits for the browser before giving up
+export const OAUTH_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 export const COMMAND_LOGIN = 'hackatime.login';
 export const COMMAND_API_KEY = 'hackatime.apikey';
@@ -59,6 +64,7 @@ export const TIME_BETWEEN_HEARTBEATS_MS = 120000;
 export const SEND_BUFFER_SECONDS = 30;
 export const AI_RECENT_PASTES_TIME_MS = 500;
 export const SYNC_AI_HEARTBEATS_DEBOUNCE_SECONDS = 120;
+export const CLI_PROBE_TIMEOUT_MS = 5000;
 
 export interface Heartbeat {
   time: number;

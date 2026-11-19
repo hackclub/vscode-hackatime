@@ -9,11 +9,15 @@ import { extensionId as liveShareExtensionId, getApi, LiveShare, Role } from 'vs
 
 import {
   HACKATIME_CLIENT_ID,
+  HACKATIME_OAUTH_BASE_URL,
   AI_RECENT_PASTES_TIME_MS,
   ALLOWED_SCHEMES,
+  CLI_PROBE_TIMEOUT_MS,
   COMMAND_DASHBOARD,
   Heartbeat,
   LogLevel,
+  OAUTH_CALLBACK_PORT,
+  OAUTH_IDLE_TIMEOUT_MS,
   SEND_BUFFER_SECONDS,
   SYNC_AI_HEARTBEATS_DEBOUNCE_SECONDS,
 } from './constants';
@@ -26,6 +30,7 @@ import { Desktop } from './desktop';
 import { findGitRoot, isTooBroadGitRoot } from './git-root';
 import { Logger } from './logger';
 import { discardOfflineQueue, getOfflineCount, getOfflineTimes } from './offline-queue';
+import { authorizeUrl, newOAuthAttempt, OAuthAttempt, stateMatches } from './oauth';
 import {
   LOGIN_REMINDER,
   NOT_LOGGED_IN_TEXT,
@@ -132,10 +137,7 @@ export class Hackatime {
       clearTimeout(this.syncAIHeartbeatsDebounce);
       this.syncAIHeartbeatsDebounce = undefined;
     }
-    if (this.httpServer) {
-      this.httpServer.close();
-      this.httpServer = null;
-    }
+    this.closeCallbackServer();
     this.sendHeartbeats();
     this.statusBar?.dispose();
     this.statusBarTeamYou?.dispose();
@@ -208,6 +210,7 @@ export class Hackatime {
               this.showCodingActivity = showCodingActivity.value !== 'false';
 
               this.dependencies.checkAndInstallCli(() => {
+                this.forgetCliFlagSupport();
                 this.logger.debug('Hackatime initialized');
                 // don't overwrite the "not logged in" status checkApiKey just set
                 this.options.hasApiKey((hasApiKey) => {
@@ -283,8 +286,6 @@ export class Hackatime {
       return;
     }
 
-    const redirectUri = `http://localhost:54321/callback`;
-
     const choice = await vscode.window.showInformationMessage(
       'Hackatime needs to open your browser to sign in. Continue?',
       { modal: true },
@@ -304,70 +305,123 @@ export class Hackatime {
 
     this.logger.debug('Starting Hackatime OAuth flow');
 
-    this.startCallbackServer(54321, (authCode: string) => {
-      this.exchangeCodeForApiKey(authCode);
-    });
+    // a fresh attempt every time: a callback from an older tab no longer matches
+    const attempt = newOAuthAttempt();
+    this.oauthAttempt = attempt;
+    if (!(await this.startCallbackServer())) return;
 
-    const authUrl = `https://hackatime.hackclub.com/oauth/authorize?client_id=${HACKATIME_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
-    vscode.env.openExternal(vscode.Uri.parse(authUrl));
+    const authUrl = authorizeUrl(
+      HACKATIME_OAUTH_BASE_URL,
+      HACKATIME_CLIENT_ID,
+      this.oauthRedirectUri(),
+      attempt,
+    );
+    this.openBrowser(authUrl);
   }
 
-  private startCallbackServer(port: number, onCode: (code: string) => void): void {
-    this.httpServer = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
-      if (!req.url) {
-        res.writeHead(400);
-        res.end('Invalid request');
-        return;
+  private oauthAttempt?: OAuthAttempt;
+  private oauthIdleTimer?: NodeJS.Timeout;
+  private oauthPort?: number;
+  private oauthIdleTimeoutMs?: number;
+
+  private oauthRedirectUri(): string {
+    return `http://localhost:${this.oauthPort ?? OAUTH_CALLBACK_PORT}/callback`;
+  }
+
+  private openBrowser(url: string): void {
+    vscode.env.openExternal(vscode.Uri.parse(url));
+  }
+
+  // listens for the browser coming back from Hackatime. resolves false if the port can't
+  // be used. if this window is already listening (an earlier login tab was closed), the
+  // same server is reused and only the attempt changes, instead of failing on the port.
+  private startCallbackServer(): Promise<boolean> {
+    this.resetOAuthIdleTimer();
+    if (this.httpServer?.listening) return Promise.resolve(true);
+
+    const port = this.oauthPort ?? OAUTH_CALLBACK_PORT;
+    const server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
+      const page = (status: number, html: string) => {
+        res.writeHead(status, { 'Content-Type': 'text/html; charset=UTF-8' });
+        res.end(html);
+      };
+
+      const url = new URL(req.url || '/', `http://localhost:${port}`);
+      if (url.pathname !== '/callback') return page(404, 'Not found');
+
+      // only the attempt this window started may finish a login. anything else (an old
+      // tab, or another page trying to log this window into a different account) is
+      // turned away without ending the attempt that's still waiting.
+      const attempt = this.oauthAttempt;
+      if (!attempt || !stateMatches(attempt.state, url.searchParams.get('state'))) {
+        this.logger.warn('Ignored an OAuth callback that was not from this login attempt');
+        return page(
+          400,
+          '<h1>Authorization Failed</h1><p>This login link is out of date or was not started by your editor. Run "Hackatime: Login" again.</p>',
+        );
       }
 
-      const url = new URL(req.url, `http://localhost:${port}`);
       const code = url.searchParams.get('code');
       const error = url.searchParams.get('error');
 
       if (error) {
         this.logger.error(`OAuth error: ${error}`);
-        res.writeHead(400, { 'Content-Type': 'text/html; charset=UTF-8' });
         // the error comes straight from the query string, so escape it before echoing it back
-        res.end(`<h1>Authorization Failed</h1><p>Error: ${Utils.escapeHtml(error)}</p>`);
-        this.httpServer?.close();
-        this.httpServer = null;
+        page(400, `<h1>Authorization Failed</h1><p>Error: ${Utils.escapeHtml(error)}</p>`);
+        this.closeCallbackServer();
         return;
       }
 
-      if (code) {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' });
-        res.end('<h1>✓ Authorization successful!</h1><p>You can now close this page...</p>');
-
-        this.logger.debug('Received authorization code');
-        onCode(code);
-
-        setTimeout(() => {
-          this.httpServer?.close();
-          this.httpServer = null;
-        }, 100);
-      } else {
-        res.writeHead(400, { 'Content-Type': 'text/html; charset=UTF-8' });
-        res.end('<h1>Authorization Failed</h1><p>No authorization code received</p>');
+      if (!code) {
+        return page(400, '<h1>Authorization Failed</h1><p>No authorization code received</p>');
       }
-    });
 
-    this.httpServer.on('error', (err) => {
-      this.logger.error(`OAuth server error: ${err}`);
-      vscode.window.showErrorMessage('Failed to start OAuth callback server');
+      page(200, '<h1>✓ Authorization successful!</h1><p>You can now close this page...</p>');
+      this.logger.debug('Received authorization code');
+      this.closeCallbackServer();
+      this.exchangeCodeForApiKey(code, attempt.codeVerifier);
     });
+    this.httpServer = server;
 
-    this.httpServer.listen(port, () => {
-      this.logger.debug(`OAuth callback server listening on port ${port}`);
+    return new Promise((resolve) => {
+      server.on('error', (err) => {
+        this.logger.error(`OAuth server error: ${err}`);
+        vscode.window.showErrorMessage('Failed to start OAuth callback server');
+        if (this.httpServer === server) this.closeCallbackServer();
+        resolve(false);
+      });
+      server.listen(port, () => {
+        this.logger.debug(`OAuth callback server listening on port ${port}`);
+        resolve(true);
+      });
     });
   }
 
-  private async exchangeCodeForApiKey(authCode: string): Promise<void> {
+  // gives up on a login nobody finished, so the port is free again
+  private resetOAuthIdleTimer(): void {
+    if (this.oauthIdleTimer) clearTimeout(this.oauthIdleTimer);
+    this.oauthIdleTimer = setTimeout(() => {
+      this.logger.debug('Login was not finished in time, closing the OAuth callback server');
+      this.closeCallbackServer();
+    }, this.oauthIdleTimeoutMs ?? OAUTH_IDLE_TIMEOUT_MS);
+    this.oauthIdleTimer.unref?.();
+  }
+
+  private closeCallbackServer(): void {
+    if (this.oauthIdleTimer) clearTimeout(this.oauthIdleTimer);
+    this.oauthIdleTimer = undefined;
+    this.oauthAttempt = undefined;
+    this.httpServer?.close();
+    this.httpServer = null;
+  }
+
+  private async exchangeCodeForApiKey(authCode: string, codeVerifier: string): Promise<void> {
     try {
-      const apiUrl = 'https://hackatime.hackclub.com';
-      const redirectUri = 'http://localhost:54321/callback';
+      const apiUrl = HACKATIME_OAUTH_BASE_URL;
+      const redirectUri = this.oauthRedirectUri();
 
       this.logger.debug('Exchanging authorization code for access token');
-      const token = await Utils.exchangeCodeForToken(apiUrl, authCode, redirectUri);
+      const token = await Utils.exchangeCodeForToken(apiUrl, authCode, redirectUri, codeVerifier);
 
       this.logger.debug('Fetching API key using access token');
       const apiKey = await Utils.fetchApiKeyWithToken(apiUrl, token);
@@ -1296,24 +1350,51 @@ export class Hackatime {
     );
   }
 
-  // whether this wakatime-cli build knows a flag, checked once per binary via --help. the
-  // pinned cli for old macOS predates newer flags and would fail on an unknown one.
+  // whether this wakatime-cli build knows a flag, checked via --help. the pinned cli for
+  // old macOS predates newer flags and would fail on an unknown one. only a clean --help
+  // answer is cached: if it fails or hangs (mid update, antivirus holding the exe), the
+  // answer is "yes" for that call and the next call asks again. that fails closed, so an
+  // opt-out flag like --sync-ai-disabled is never dropped just because the check broke.
   private cliFlagSupport?: Record<string, Promise<boolean>>;
+  private cliProbeTimeoutMs?: number;
   private cliSupportsFlag(binary: string, flag: string): Promise<boolean> {
     this.cliFlagSupport ??= {};
     const key = `${binary}\n${flag}`;
-    if (!this.cliFlagSupport[key]) {
-      this.cliFlagSupport[key] = new Promise((resolve) => {
-        try {
-          child_process.execFile(binary, ['--help'], Desktop.buildOptions(), (_error, stdout) =>
-            resolve(String(stdout || '').includes(flag)),
-          );
-        } catch {
-          resolve(false);
-        }
-      });
-    }
-    return this.cliFlagSupport[key];
+    const cached = this.cliFlagSupport[key];
+    if (cached) return cached;
+    const probe = new Promise<boolean>((resolve) => {
+      const forget = () => {
+        if (this.cliFlagSupport?.[key] === probe) delete this.cliFlagSupport[key];
+        resolve(true);
+      };
+      try {
+        const options = {
+          ...Desktop.buildOptions(),
+          timeout: this.cliProbeTimeoutMs ?? CLI_PROBE_TIMEOUT_MS,
+        };
+        child_process.execFile(binary, ['--help'], options, (error, stdout) => {
+          const help = String(stdout || '');
+          // some builds print their help but exit non-zero, which is still an answer.
+          // no output (missing binary, crash) or a timeout kill is not.
+          if (error && (error.killed || !help.trim())) {
+            this.logger.debug(`wakatime-cli --help failed, retrying next time: ${error.message}`);
+            forget();
+          } else {
+            resolve(help.includes(flag));
+          }
+        });
+      } catch (e) {
+        this.logger.debugException(e);
+        forget();
+      }
+    });
+    this.cliFlagSupport[key] = probe;
+    return probe;
+  }
+
+  // the binary may have just been replaced by an update, so ask it again
+  private forgetCliFlagSupport(): void {
+    this.cliFlagSupport = {};
   }
 
   private syncAIHeartbeatsDebounced(): void {
@@ -1484,9 +1565,15 @@ export class Hackatime {
     });
 
     // send any extra heartbeats. the cli only reads stdin with --extra-heartbeats, and it
-    // can exit before reading it, so a closed pipe gets logged instead of thrown
+    // can exit before reading it, so a closed pipe gets logged instead of thrown. the main
+    // heartbeat of that failed run is lost too, so the extras aren't requeued: a cli that
+    // keeps failing would just resend them forever.
     if (proc.stdin) {
-      proc.stdin.on('error', (e) => this.logger.debug(`wakatime-cli stdin: ${e.message}`));
+      proc.stdin.on('error', (e) =>
+        this.logger.warn(
+          `wakatime-cli exited before reading ${extraHeartbeats.length} extra heartbeats: ${e.message}`,
+        ),
+      );
       if (extraHeartbeats.length > 0) {
         proc.stdin.write(JSON.stringify(extraHeartbeats) + '\n');
         cleanup.push(...(extraHeartbeats.map((h) => h.local_file).filter(Boolean) as string[]));

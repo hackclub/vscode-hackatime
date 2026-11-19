@@ -274,6 +274,7 @@ export class Utils {
     apiUrl: string,
     authCode: string,
     redirectUri: string,
+    codeVerifier?: string,
     clientId: string = HACKATIME_CLIENT_ID,
   ): Promise<string> {
     const tokenParams = new URLSearchParams();
@@ -281,6 +282,7 @@ export class Utils {
     tokenParams.append('code', authCode);
     tokenParams.append('grant_type', 'authorization_code');
     tokenParams.append('redirect_uri', redirectUri);
+    if (codeVerifier) tokenParams.append('code_verifier', codeVerifier);
 
     const tokenResponse = await fetch(`${apiUrl}/oauth/token`, {
       method: 'POST',

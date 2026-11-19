@@ -104,6 +104,23 @@ suite('AI transcript sync is opt-in', function () {
     assert.ok(!args.includes('--sync-ai-disabled'), args.join(' '));
   });
 
+  test('a hanging flag check still tells the cli to skip transcripts', async () => {
+    const cli = path.join(dir, 'cli-hangs');
+    fs.writeFileSync(
+      cli,
+      '#!/bin/sh\n' +
+        'if [ "$1" = "--help" ]; then exec sleep 30; fi\n' +
+        `printf '%s\\n' "$@" >> '${record}'\n` +
+        `echo '---' >> '${record}'\n` +
+        'exit 0\n',
+    );
+    fs.chmodSync(cli, 0o755);
+    const h = harness(cli, { cliProbeTimeoutMs: 300 });
+    await h._sendHeartbeats();
+    const args = await waitForCall();
+    assert.ok(args.includes('--sync-ai-disabled'), args.join(' '));
+  });
+
   test('off by default: --sync-ai-activity never runs', async () => {
     const h = harness(fakeCli(true));
     h.syncAIHeartbeatsDebounced();
@@ -118,6 +135,87 @@ suite('AI transcript sync is opt-in', function () {
     await h.syncAIHeartbeats();
     const args = await waitForCall();
     assert.strictEqual(args[0], '--sync-ai-activity');
+  });
+});
+
+// the --help check decides whether heartbeats can pass --sync-ai-disabled, so a broken
+// check must never get stuck on "no" (that would let the cli read transcripts)
+suite('wakatime-cli flag check', function () {
+  const FLAG = '--sync-ai-disabled';
+  let dir, cli;
+
+  setup(function () {
+    if (process.platform === 'win32') this.skip();
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hackatime-flagcheck-'));
+    cli = path.join(dir, 'wakatime-cli');
+  });
+
+  teardown(() => {
+    if (dir) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeCli = (body) => {
+    fs.writeFileSync(cli, '#!/bin/sh\n' + body);
+    fs.chmodSync(cli, 0o755);
+  };
+  const knowsFlag = () => writeCli(`echo "  ${FLAG}   Disable parsing AI transcript logs"\n`);
+  const doesNotKnowFlag = () => writeCli('echo "  --entity string"\n');
+
+  const harness = (timeoutMs) => {
+    const h = Object.create(Hackatime.prototype);
+    Object.assign(h, {
+      logger: { debug: () => {}, debugException: () => {}, warn: () => {}, error: () => {} },
+      cliProbeTimeoutMs: timeoutMs,
+    });
+    return h;
+  };
+
+  test('a missing binary (mid update) counts as supported and is checked again', async () => {
+    const h = harness();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), true);
+    doesNotKnowFlag();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), false);
+  });
+
+  test('a hanging --help times out, counts as supported and is checked again', async () => {
+    writeCli('exec sleep 30\n');
+    const h = harness(300);
+    const started = Date.now();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), true);
+    assert.ok(Date.now() - started < 5000, 'the check did not time out');
+    doesNotKnowFlag();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), false);
+  });
+
+  test('help printed with a non-zero exit is still an answer, and is cached', async () => {
+    writeCli('echo "  --entity string"\nexit 1\n');
+    const h = harness();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), false);
+    knowsFlag();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), false, 'should be cached');
+  });
+
+  test('a timeout counts as no answer even if some help was printed', async () => {
+    writeCli('echo "  --entity string"\nexec sleep 30\n');
+    const h = harness(300);
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), true);
+    doesNotKnowFlag();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), false, 'should have asked again');
+  });
+
+  test('a clean answer is cached until the cli is installed again', async () => {
+    doesNotKnowFlag();
+    const h = harness();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), false);
+    knowsFlag(); // an update replaced the binary in place
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), false, 'should still be cached');
+    h.forgetCliFlagSupport();
+    assert.strictEqual(await h.cliSupportsFlag(cli, FLAG), true);
+  });
+
+  test('the cache is cleared once the cli install or update finishes', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'wakatime.ts'), 'utf8');
+    assert.match(src, /checkAndInstallCli\(\(\) => \{\s*this\.forgetCliFlagSupport\(\);/);
   });
 });
 

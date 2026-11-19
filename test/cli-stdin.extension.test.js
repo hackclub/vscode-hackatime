@@ -9,12 +9,13 @@ const { Hackatime } = require('../out/src/wakatime');
 // wakatime-cli can exit before it reads the extra heartbeats on stdin (a crash, an old
 // build, a bad flag). writing to that closed pipe must not throw out of the extension.
 suite('wakatime-cli exits without reading stdin', function () {
-  let dir, record;
+  let dir, record, warnings;
 
   setup(function () {
     if (process.platform === 'win32') this.skip();
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hackatime-stdin-'));
     record = path.join(dir, 'calls.txt');
+    warnings = [];
   });
 
   teardown(() => {
@@ -47,7 +48,12 @@ suite('wakatime-cli exits without reading stdin', function () {
         getConfigFile: () => path.join(dir, '.wakatime.cfg'),
         getLogFile: () => path.join(dir, 'wakatime.log'),
       },
-      logger: { debug: () => {}, debugException: () => {}, warn: () => {}, error: () => {} },
+      logger: {
+        debug: () => {},
+        debugException: () => {},
+        warn: (msg) => warnings.push(msg),
+        error: () => {},
+      },
       editorName: 'vscode',
       extension: { version: 'test' },
       heartbeats,
@@ -70,7 +76,7 @@ suite('wakatime-cli exits without reading stdin', function () {
     await new Promise((resolve) => setTimeout(resolve, 500));
   };
 
-  test('a big extra heartbeats payload does not throw EPIPE', async () => {
+  test('a big extra heartbeats payload does not throw EPIPE, and the loss is a warning', async () => {
     // far more than a pipe buffer holds, so the write is still pending when the cli exits
     const long = 'x'.repeat(2000);
     const heartbeats = Array.from({ length: 300 }, (_, i) => ({
@@ -81,6 +87,10 @@ suite('wakatime-cli exits without reading stdin', function () {
     await sendAndSettle(harness(heartbeats));
     const args = fs.readFileSync(record, 'utf8').split('\n');
     assert.ok(args.includes('--extra-heartbeats'), args.join(' '));
+    assert.ok(
+      warnings.some((w) => w.includes('before reading 299 extra heartbeats')),
+      JSON.stringify(warnings),
+    );
   });
 
   test('a single heartbeat with no extras does not throw either', async () => {
@@ -89,5 +99,6 @@ suite('wakatime-cli exits without reading stdin', function () {
     );
     const args = fs.readFileSync(record, 'utf8').split('\n');
     assert.ok(!args.includes('--extra-heartbeats'), args.join(' '));
+    assert.deepStrictEqual(warnings, []);
   });
 });
