@@ -105,7 +105,11 @@ suite('desktop: logged out heartbeats (extension host)', function () {
   };
 
   setup(function () {
-    if (!cliPath) this.skip();
+    if (!cliPath) {
+      // CI downloads a pinned cli, so a missing path there is a broken setup, not a skip
+      if (process.env.CI) throw new Error('WAKATIME_CLI_PATH must be set in CI');
+      this.skip();
+    }
     home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hackatime-loggedout-')));
     // nothing can leave the machine: there's no key, and the api url is a dead local port
     fs.writeFileSync(
