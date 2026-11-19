@@ -18,8 +18,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      # same node and strict install as the Publish workflow, so a lockfile that npm ci
+      # rejects fails here and not in the middle of a release
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       # the desktop tests drive a real wakatime-cli (offline queue, heartbeat sending), so
       # pin a release and check it against the release's published sha256
       - name: Download wakatime-cli
