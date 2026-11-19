@@ -1483,12 +1483,15 @@ export class Hackatime {
       }
     });
 
-    // send any extra heartbeats
+    // send any extra heartbeats. the cli only reads stdin with --extra-heartbeats, and it
+    // can exit before reading it, so a closed pipe gets logged instead of thrown
     if (proc.stdin) {
-      proc.stdin.write(JSON.stringify(extraHeartbeats));
-      proc.stdin.write('\n');
+      proc.stdin.on('error', (e) => this.logger.debug(`wakatime-cli stdin: ${e.message}`));
+      if (extraHeartbeats.length > 0) {
+        proc.stdin.write(JSON.stringify(extraHeartbeats) + '\n');
+        cleanup.push(...(extraHeartbeats.map((h) => h.local_file).filter(Boolean) as string[]));
+      }
       proc.stdin.end();
-      cleanup.push(...(extraHeartbeats.map((h) => h.local_file).filter(Boolean) as string[]));
     } else if (extraHeartbeats.length > 0) {
       this.logger.error('Unable to set stdio[0] to pipe');
       this.heartbeats.push(...extraHeartbeats);
