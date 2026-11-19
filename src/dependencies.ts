@@ -3,13 +3,13 @@ import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import * as request from 'request';
 import * as semver from 'semver';
 
 import { Options, Setting } from './options';
 
 import { getCliLocation, getCliLocationGlobal } from './cli-location';
 import { Desktop } from './desktop';
+import { downloadToFile, getJson } from './http-get';
 import { Logger } from './logger';
 
 enum osName {
@@ -144,24 +144,19 @@ export class Dependencies {
   private getLatestCliVersion(callback: (arg0: string) => void): void {
     this.options.getSetting('settings', 'proxy', false, (proxy: Setting) => {
       this.options.getSetting('settings', 'no_ssl_verify', false, (noSSLVerify: Setting) => {
-        let options = {
-          url: this.githubReleasesUrl,
-          json: true,
-          headers: {
-            'User-Agent': 'github.com/wakatime/vscode-wakatime',
-          },
-        };
-        this.logger.debug(`Fetching latest wakatime-cli version from GitHub API: ${options.url}`);
-        if (proxy.value) {
-          this.logger.debug(`Using Proxy: ${proxy.value}`);
-          options['proxy'] = proxy.value;
-        }
-        if (noSSLVerify.value === 'true') options['strictSSL'] = false;
-        try {
-          request.get(options, (error, response, json) => {
-            if (!error && response && response.statusCode == 200) {
-              this.logger.debug(`GitHub API Response ${response.statusCode}`);
-              const latestCliVersion = json['tag_name'];
+        this.logger.debug(
+          `Fetching latest wakatime-cli version from GitHub API: ${this.githubReleasesUrl}`,
+        );
+        if (proxy.value) this.logger.debug(`Using Proxy: ${proxy.value}`);
+        getJson(this.githubReleasesUrl, {
+          proxy: proxy.value || undefined,
+          strictSSL: noSSLVerify.value !== 'true',
+          headers: { 'User-Agent': 'github.com/wakatime/vscode-wakatime' },
+        })
+          .then(({ status, body }) => {
+            if (status == 200 && body?.tag_name) {
+              this.logger.debug(`GitHub API Response ${status}`);
+              const latestCliVersion = body['tag_name'];
               this.logger.debug(`Latest wakatime-cli version from GitHub: ${latestCliVersion}`);
               this.options.setSetting(
                 'internal',
@@ -171,18 +166,14 @@ export class Dependencies {
               );
               callback(latestCliVersion);
             } else {
-              if (response) {
-                this.logger.warn(`GitHub API Response ${response.statusCode}: ${error}`);
-              } else {
-                this.logger.warn(`GitHub API Response Error: ${error}`);
-              }
+              this.logger.warn(`GitHub API Response ${status}`);
               callback('');
             }
+          })
+          .catch((e) => {
+            this.logger.warn(`GitHub API Response Error: ${e}`);
+            callback('');
           });
-        } catch (e) {
-          this.logger.warnException(e);
-          callback('');
-        }
       });
     });
   }
@@ -273,30 +264,17 @@ export class Dependencies {
   ): void {
     this.options.getSetting('settings', 'proxy', false, (proxy: Setting) => {
       this.options.getSetting('settings', 'no_ssl_verify', false, (noSSLVerify: Setting) => {
-        let options = { url: url };
-        if (proxy.value) {
-          this.logger.debug(`Using Proxy: ${proxy.value}`);
-          options['proxy'] = proxy.value;
-        }
-        if (noSSLVerify.value === 'true') options['strictSSL'] = false;
-        try {
-          let r = request.get(options);
-          r.on('error', (e) => {
+        if (proxy.value) this.logger.debug(`Using Proxy: ${proxy.value}`);
+        downloadToFile(url, outputFile, {
+          proxy: proxy.value || undefined,
+          strictSSL: noSSLVerify.value !== 'true',
+        })
+          .then(() => callback())
+          .catch((e) => {
             this.logger.warn(`Failed to download ${url}`);
-            this.logger.warn(e.toString());
+            this.logger.warn(String(e));
             error();
           });
-          let out = fs.createWriteStream(outputFile);
-          r.pipe(out);
-          r.on('end', () => {
-            out.on('finish', () => {
-              callback();
-            });
-          });
-        } catch (e) {
-          this.logger.warnException(e);
-          callback();
-        }
       });
     });
   }
@@ -391,12 +369,11 @@ export class Dependencies {
     const url = `https://api.wakatime.com/api/v1/cli-missing?osname=${osname}&architecture=${architecture}&plugin=vscode`;
     this.options.getSetting('settings', 'proxy', false, (proxy: Setting) => {
       this.options.getSetting('settings', 'no_ssl_verify', false, (noSSLVerify: Setting) => {
-        let options = { url: url };
-        if (proxy.value) options['proxy'] = proxy.value;
-        if (noSSLVerify.value === 'true') options['strictSSL'] = false;
-        try {
-          request.get(options);
-        } catch (e) {}
+        // fire and forget, nothing depends on the answer
+        getJson(url, {
+          proxy: proxy.value || undefined,
+          strictSSL: noSSLVerify.value !== 'true',
+        }).catch(() => {});
       });
     });
   }
