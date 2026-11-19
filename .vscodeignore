@@ -23,3 +23,6 @@ tags
 tags.lock
 tags.temp
 .vscode-test-web
+.vscode-test/**
+.vscode-test.mjs
+tsconfig.test.json

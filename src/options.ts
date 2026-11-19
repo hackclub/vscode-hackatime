@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { getCliLocation } from './cli-location';
 import { Desktop } from './desktop';
 import { Logger } from './logger';
 import { Utils } from './utils';
@@ -18,10 +19,12 @@ export class Options {
   private internalConfigFile: string;
   private logFile: string;
   private logger: Logger;
+  private resourcesFolder: string;
   private cache: any = {};
 
   constructor(logger: Logger, resourcesFolder: string) {
     this.logger = logger;
+    this.resourcesFolder = resourcesFolder;
     this.configFile = path.join(Desktop.getHomeDirectory(), '.wakatime.cfg');
     this.internalConfigFile = path.join(resourcesFolder, 'wakatime-internal.cfg');
     this.logFile = path.join(resourcesFolder, 'wakatime.log');
@@ -41,155 +44,162 @@ export class Options {
     internal: boolean,
     callback: (Setting) => void,
   ): void {
-    fs.readFile(
-      this.getConfigFile(internal),
-      'utf-8',
-      (err: NodeJS.ErrnoException | null, content: string) => {
-        if (err) {
+    const configFile = this.getConfigFile(internal);
+    const binary = getCliLocation(this.resourcesFolder, this.logger);
+    if (!fs.existsSync(binary)) {
+      // wakatime-cli isn't installed yet (fresh install, or resourcesFolder was wiped), so
+      // there's nothing to shell out to. Reading proxy/no_ssl_verify is itself needed to
+      // download the cli, so fall back to a plain read of the ini file for this one case.
+      this.getSettingFallback(configFile, section, key, callback);
+      return;
+    }
+
+    const args = ['--config-read', key, '--config-section', section, '--config', configFile];
+    const options = Desktop.buildOptions();
+    try {
+      child_process.execFile(binary, args, options, (error, stdout, stderr) => {
+        // exit code 110 means the key/section/file wasn't found, not a real error
+        if (error && (error as any).code !== 110) {
           callback({
-            error: new Error(`could not read ${this.getConfigFile(internal)}`),
+            error: new Error(
+              `could not read ${key} from ${configFile}: ${this.firstLine(stderr) || error}`,
+            ),
             key: key,
             value: null,
           });
-        } else {
-          let currentSection = '';
-          let lines = content.split('\n');
-          for (var i = 0; i < lines.length; i++) {
-            let line = lines[i];
-            if (this.startsWith(line.trim(), '[') && this.endsWith(line.trim(), ']')) {
-              currentSection = line
-                .trim()
-                .substring(1, line.trim().length - 1)
-                .toLowerCase();
-            } else if (currentSection === section) {
-              let parts = line.split('=');
-              let currentKey = parts[0].trim();
-              if (currentKey === key && parts.length > 1) {
-                callback({ key: key, value: this.removeNulls(parts[1].trim()) });
-                return;
-              }
-            }
-          }
-
-          callback({ key: key, value: null });
+          return;
         }
-      },
-    );
+        const value = this.removeNulls(stdout.toString().trim());
+        callback({ key: key, value: value || null });
+      });
+    } catch (e) {
+      callback({ error: e, key: key, value: null });
+    }
+  }
+
+  private getSettingFallback(
+    configFile: string,
+    section: string,
+    key: string,
+    callback: (Setting) => void,
+  ): void {
+    fs.readFile(configFile, 'utf-8', (err: NodeJS.ErrnoException | null, content: string) => {
+      if (err) {
+        callback({ error: new Error(`could not read ${configFile}`), key: key, value: null });
+        return;
+      }
+      let currentSection = '';
+      for (const rawLine of content.split('\n')) {
+        const line = rawLine.trim();
+        if (line.startsWith('[') && line.endsWith(']')) {
+          currentSection = line.substring(1, line.length - 1).toLowerCase();
+          continue;
+        }
+        if (currentSection !== section) continue;
+        const eq = line.indexOf('=');
+        if (eq === -1) continue;
+        if (line.substring(0, eq).trim() === key) {
+          callback({ key: key, value: this.removeNulls(line.substring(eq + 1).trim()) });
+          return;
+        }
+      }
+      callback({ key: key, value: null });
+    });
   }
 
   public setSetting(section: string, key: string, val: string, internal: boolean): void {
-    const configFile = this.getConfigFile(internal);
-    fs.readFile(configFile, 'utf-8', (err: NodeJS.ErrnoException | null, content: string) => {
-      // ignore errors because config file might not exist yet
-      if (err) content = '';
+    this.setSettings(section, [{ key, value: val }], internal);
+  }
 
-      let contents: string[] = [];
-      let currentSection = '';
-
-      let found = false;
-      let lines = content.split('\n');
-      for (var i = 0; i < lines.length; i++) {
-        let line = lines[i];
-        if (this.startsWith(line.trim(), '[') && this.endsWith(line.trim(), ']')) {
-          if (currentSection === section && !found) {
-            contents.push(this.removeNulls(key + ' = ' + val));
-            found = true;
-          }
-          currentSection = line
-            .trim()
-            .substring(1, line.trim().length - 1)
-            .toLowerCase();
-          contents.push(this.removeNulls(line));
-        } else if (currentSection === section) {
-          let parts = line.split('=');
-          let currentKey = parts[0].trim();
-          if (currentKey === key) {
-            if (!found) {
-              contents.push(this.removeNulls(key + ' = ' + val));
-              found = true;
-            }
-          } else {
-            contents.push(this.removeNulls(line));
-          }
-        } else {
-          contents.push(this.removeNulls(line));
-        }
-      }
-
-      if (!found) {
-        if (currentSection !== section) {
-          contents.push('[' + section + ']');
-        }
-        contents.push(this.removeNulls(key + ' = ' + val));
-      }
-
-      fs.writeFile(configFile as string, contents.join('\n'), (err) => {
-        if (err) throw err;
-      });
-    });
+  // quote each pair as a single CSV field so commas/equals signs inside the value
+  // survive wakatime-cli's pflag stringToString parsing of --config-write
+  private quoteConfigWritePair(key: string, val: string): string {
+    const pair = `${key}=${this.removeNulls(val)}`.replace(/"/g, '""');
+    return `"${pair}"`;
   }
 
   public setSettings(section: string, settings: Setting[], internal: boolean): void {
     const configFile = this.getConfigFile(internal);
+    const binary = getCliLocation(this.resourcesFolder, this.logger);
+    if (!fs.existsSync(binary)) {
+      // same bootstrap gap as getSetting: nothing to shell out to yet, most importantly
+      // this is the path an OAuth login uses to persist a fresh api_key, so it can't be
+      // silently skipped
+      this.setSettingsFallback(configFile, section, settings);
+      return;
+    }
+
+    const args: string[] = [];
+    settings.forEach((setting) => {
+      args.push('--config-write', this.quoteConfigWritePair(setting.key, setting.value));
+    });
+    args.push('--config-section', section, '--config', configFile);
+    const options = Desktop.buildOptions();
+    try {
+      child_process.execFile(binary, args, options, (error, _stdout, stderr) => {
+        if (error) {
+          this.logger.debug(
+            `could not write settings to ${configFile}: ${this.firstLine(stderr) || error}`,
+          );
+        }
+      });
+    } catch (e) {
+      this.logger.debugException(e);
+    }
+  }
+
+  private setSettingsFallback(configFile: string, section: string, settings: Setting[]): void {
     fs.readFile(configFile, 'utf-8', (err: NodeJS.ErrnoException | null, content: string) => {
-      // ignore errors because config file might not exist yet
+      // ignore errors because the config file might not exist yet
       if (err) content = '';
 
-      let contents: string[] = [];
+      const contents: string[] = [];
       let currentSection = '';
-
       const found: Record<string, boolean> = {};
-      let lines = content.split('\n');
-      for (var i = 0; i < lines.length; i++) {
-        let line = lines[i];
-        if (this.startsWith(line.trim(), '[') && this.endsWith(line.trim(), ']')) {
-          if (currentSection === section) {
-            settings.forEach((setting) => {
-              if (!found[setting.key]) {
-                contents.push(this.removeNulls(setting.key + ' = ' + setting.value));
-                found[setting.key] = true;
-              }
-            });
+
+      const writeMissing = () => {
+        settings.forEach((setting) => {
+          if (!found[setting.key]) {
+            contents.push(this.removeNulls(`${setting.key} = ${setting.value}`));
+            found[setting.key] = true;
           }
-          currentSection = line
-            .trim()
-            .substring(1, line.trim().length - 1)
-            .toLowerCase();
-          contents.push(this.removeNulls(line));
-        } else if (currentSection === section) {
-          let parts = line.split('=');
-          let currentKey = parts[0].trim();
-          let keepLineUnchanged = true;
-          settings.forEach((setting) => {
-            if (currentKey === setting.key) {
-              keepLineUnchanged = false;
-              if (!found[setting.key]) {
-                contents.push(this.removeNulls(setting.key + ' = ' + setting.value));
-                found[setting.key] = true;
-              }
-            }
-          });
-          if (keepLineUnchanged) {
-            contents.push(this.removeNulls(line));
-          }
-        } else {
-          contents.push(this.removeNulls(line));
+        });
+      };
+
+      for (const rawLine of content.split('\n')) {
+        const line = rawLine.trim();
+        if (line.startsWith('[') && line.endsWith(']')) {
+          if (currentSection === section) writeMissing();
+          currentSection = line.substring(1, line.length - 1).toLowerCase();
+          contents.push(this.removeNulls(rawLine));
+          continue;
+        }
+        if (currentSection !== section) {
+          contents.push(this.removeNulls(rawLine));
+          continue;
+        }
+        const eq = line.indexOf('=');
+        const currentKey = eq === -1 ? line : line.substring(0, eq).trim();
+        const setting = settings.find((s) => s.key === currentKey);
+        if (!setting) {
+          contents.push(this.removeNulls(rawLine));
+        } else if (!found[setting.key]) {
+          contents.push(this.removeNulls(`${setting.key} = ${setting.value}`));
+          found[setting.key] = true;
         }
       }
 
-      settings.forEach((setting) => {
-        if (!found[setting.key]) {
-          if (currentSection !== section) {
-            contents.push('[' + section + ']');
-            currentSection = section;
-          }
-          contents.push(this.removeNulls(setting.key + ' = ' + setting.value));
+      const remaining = settings.filter((setting) => !found[setting.key]);
+      if (remaining.length) {
+        if (currentSection !== section) contents.push(`[${section}]`);
+        remaining.forEach((setting) => {
+          contents.push(this.removeNulls(`${setting.key} = ${setting.value}`));
           found[setting.key] = true;
-        }
-      });
+        });
+      }
 
-      fs.writeFile(configFile as string, contents.join('\n'), (err) => {
-        if (err) throw err;
+      fs.writeFile(configFile, contents.join('\n'), (writeErr) => {
+        if (writeErr) this.logger.debugException(writeErr);
       });
     });
   }
@@ -382,12 +392,8 @@ export class Options {
       });
   }
 
-  private startsWith(outer: string, inner: string): boolean {
-    return outer.slice(0, inner.length) === inner;
-  }
-
-  private endsWith(outer: string, inner: string): boolean {
-    return inner === '' || outer.slice(-inner.length) === inner;
+  private firstLine(s: string): string {
+    return (s || '').toString().split('\n')[0].trim();
   }
 
   private removeNulls(s: string): string {

@@ -1,14 +1,14 @@
-import * as adm_zip from 'adm-zip';
+import adm_zip = require('adm-zip');
 import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as request from 'request';
 import * as semver from 'semver';
-import * as which from 'which';
 
 import { Options, Setting } from './options';
 
+import { getCliLocation, getCliLocationGlobal } from './cli-location';
 import { Desktop } from './desktop';
 import { Logger } from './logger';
 
@@ -44,29 +44,13 @@ export class Dependencies {
 
   public getCliLocation(): string {
     if (this.cliLocation) return this.cliLocation;
-
-    this.cliLocation = this.getCliLocationGlobal();
-    if (this.cliLocation) return this.cliLocation;
-
-    const osname = this.osName();
-    const arch = this.architecture();
-    const ext = Desktop.isWindows() ? '.exe' : '';
-    const binary = `wakatime-cli-${osname}-${arch}${ext}`;
-    this.cliLocation = path.join(this.resourcesLocation, binary);
-
+    this.cliLocation = getCliLocation(this.resourcesLocation, this.logger);
     return this.cliLocation;
   }
 
   public getCliLocationGlobal(): string | undefined {
     if (this.cliLocationGlobal) return this.cliLocationGlobal;
-
-    const binaryName = `wakatime-cli${Desktop.isWindows() ? '.exe' : ''}`;
-    const path = which.sync(binaryName, { nothrow: true });
-    if (path) {
-      this.cliLocationGlobal = path;
-      this.logger.debug(`Using global wakatime-cli location: ${path}`);
-    }
-
+    this.cliLocationGlobal = getCliLocationGlobal(this.logger);
     return this.cliLocationGlobal;
   }
 
