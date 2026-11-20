@@ -5,7 +5,7 @@ import * as path from 'path';
 const BROAD_FOLDER_NAMES = ['desktop', 'documents', 'downloads'];
 
 // returns the nearest folder at or above `folder` containing a .git entry (a directory, or a
-// file for worktrees and submodules), the same way wakatime-cli picks a project. '' if none.
+// file for worktrees and submodules), the same way hackatime-cli picks a project. '' if none.
 export function findGitRoot(folder: string, maxDepth = 500): string {
   let current = path.resolve(folder);
   for (let depth = 0; depth < maxDepth; depth++) {

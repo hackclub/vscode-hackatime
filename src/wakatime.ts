@@ -574,7 +574,7 @@ export class Hackatime {
           label: 'Enable',
           description: enabled ? '(current)' : undefined,
           detail:
-            'Let wakatime-cli read local Claude Code, Codex, Cursor, Amp and other AI tool transcripts and send the AI activity it finds to Hackatime.',
+            'Let hackatime-cli read local Claude Code, Codex, Cursor, Amp and other AI tool transcripts and send the AI activity it finds to Hackatime.',
           enable: true,
         },
       ],
@@ -1337,7 +1337,7 @@ export class Hackatime {
   }
 
   private async sendHeartbeats(): Promise<void> {
-    // sent even without an api key: wakatime-cli exits with 104 but keeps them in its
+    // sent even without an api key: hackatime-cli exits with 104 but keeps them in its
     // offline queue, and they sync once the user logs in
     await this._sendHeartbeats();
   }
@@ -1350,7 +1350,7 @@ export class Hackatime {
     );
   }
 
-  // whether this wakatime-cli build knows a flag, checked via --help. the pinned cli for
+  // whether this hackatime-cli build knows a flag, checked via --help. the pinned cli for
   // old macOS predates newer flags and would fail on an unknown one. only a clean --help
   // answer is cached: if it fails or hangs (mid update, antivirus holding the exe), the
   // answer is "yes" for that call and the next call asks again. that fails closed, so an
@@ -1377,7 +1377,7 @@ export class Hackatime {
           // some builds print their help but exit non-zero, which is still an answer.
           // no output (missing binary, crash) or a timeout kill is not.
           if (error && (error.killed || !help.trim())) {
-            this.logger.debug(`wakatime-cli --help failed, retrying next time: ${error.message}`);
+            this.logger.debug(`hackatime-cli --help failed, retrying next time: ${error.message}`);
             forget();
           } else {
             resolve(help.includes(flag));
@@ -1481,7 +1481,7 @@ export class Hackatime {
 
     args.push('--time', String(heartbeat.time));
 
-    // wakatime-cli parses AI transcripts on every heartbeat unless told not to
+    // hackatime-cli parses AI transcripts on every heartbeat unless told not to
     if (
       !this.isAiTranscriptSyncEnabled() &&
       (await this.cliSupportsFlag(this.dependencies.getCliLocation(), '--sync-ai-disabled'))
@@ -1571,7 +1571,7 @@ export class Hackatime {
     if (proc.stdin) {
       proc.stdin.on('error', (e) =>
         this.logger.warn(
-          `wakatime-cli exited before reading ${extraHeartbeats.length} extra heartbeats: ${e.message}`,
+          `hackatime-cli exited before reading ${extraHeartbeats.length} extra heartbeats: ${e.message}`,
         ),
       );
       if (extraHeartbeats.length > 0) {
@@ -2008,7 +2008,7 @@ export class Hackatime {
   }
 
   // warns when a project has no git repo, or only sits inside one that's too broad to be a
-  // project (a `git init` in the home folder or Desktop), since wakatime-cli names the project
+  // project (a `git init` in the home folder or Desktop), since hackatime-cli names the project
   // after the nearest repo and would credit all the time to that folder instead.
   private async maybePromptForGitRepoIssues(folder: string, project: string): Promise<void> {
     if (!folder || !project) return;
@@ -2020,7 +2020,7 @@ export class Hackatime {
     // one toast at a time, heartbeats keep coming while it's open
     if (this.pendingGitRepoPrompt) return;
 
-    // a .wakatime-project file wins over git when wakatime-cli picks the project
+    // a .wakatime-project file wins over git when hackatime-cli picks the project
     if (this.getWakatimeProjectFile(folder)) return;
 
     const gitRoot = findGitRoot(folder, Hackatime.MAX_PROJECT_SEARCH_DEPTH);

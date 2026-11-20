@@ -26,20 +26,20 @@ jobs:
           node-version: 26
       - name: Install dependencies
         run: npm ci
-      # the desktop tests drive a real wakatime-cli (offline queue, heartbeat sending), so
+      # the desktop tests drive a real hackatime-cli (offline queue, heartbeat sending), so
       # pin a release and check it against the release's published sha256
-      - name: Download wakatime-cli
+      - name: Download hackatime-cli
         env:
-          CLI_VERSION: v2.28.4
-          CLI_SHA256: e1dfa9fc4960cb0ebed90ee978c921b8ded9c61ffa63e750ddabd2fedb570345
+          CLI_VERSION: v3.0.0
+          CLI_SHA256: 0f1449cf9e3dba06f2d986024ab855c84eb96ac35b3077ab5857c9ec35d8ac4e
         run: |
-          mkdir -p "$RUNNER_TEMP/wakatime-cli"
-          cd "$RUNNER_TEMP/wakatime-cli"
-          curl -sSfL -o cli.zip "https://github.com/wakatime/wakatime-cli/releases/download/$CLI_VERSION/wakatime-cli-linux-amd64.zip"
+          mkdir -p "$RUNNER_TEMP/hackatime-cli"
+          cd "$RUNNER_TEMP/hackatime-cli"
+          curl -sSfL -o cli.zip "https://github.com/hackclub/hackatime-cli/releases/download/$CLI_VERSION/hackatime-cli-linux-amd64.zip"
           echo "$CLI_SHA256  cli.zip" | sha256sum -c -
           unzip -q cli.zip
-          chmod +x wakatime-cli-linux-amd64
-          ./wakatime-cli-linux-amd64 --version
-          echo "WAKATIME_CLI_PATH=$RUNNER_TEMP/wakatime-cli/wakatime-cli-linux-amd64" >> "$GITHUB_ENV"
+          chmod +x hackatime-cli-linux-amd64
+          ./hackatime-cli-linux-amd64 --version
+          echo "WAKATIME_CLI_PATH=$RUNNER_TEMP/hackatime-cli/hackatime-cli-linux-amd64" >> "$GITHUB_ENV"
       - name: Unit tests
         run: xvfb-run -a npm test

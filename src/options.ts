@@ -47,7 +47,7 @@ export class Options {
     const configFile = this.getConfigFile(internal);
     const binary = getCliLocation(this.resourcesFolder, this.logger);
     if (!fs.existsSync(binary)) {
-      // wakatime-cli isn't installed yet (fresh install, or resourcesFolder was wiped), so
+      // hackatime-cli isn't installed yet (fresh install, or resourcesFolder was wiped), so
       // there's nothing to shell out to. Reading proxy/no_ssl_verify is itself needed to
       // download the cli, so fall back to a plain read of the ini file for this one case.
       this.getSettingFallback(configFile, section, key, callback);
@@ -112,7 +112,7 @@ export class Options {
   }
 
   // quote each pair as a single CSV field so commas/equals signs inside the value
-  // survive wakatime-cli's pflag stringToString parsing of --config-write
+  // survive hackatime-cli's pflag stringToString parsing of --config-write
   private quoteConfigWritePair(key: string, val: string): string {
     const pair = `${key}=${this.removeNulls(val)}`.replace(/"/g, '""');
     return `"${pair}"`;
@@ -275,8 +275,8 @@ export class Options {
 
   public async getApiKeyFromVaultCmd(): Promise<string> {
     try {
-      // Use basically the same logic as wakatime-cli to interpret cmdStr
-      // https://github.com/wakatime/wakatime-cli/blob/1fd560a/cmd/params/params.go#L697
+      // Use basically the same logic as hackatime-cli to interpret cmdStr
+      // https://github.com/hackclub/hackatime-cli/blob/2e53df6/pkg/params/params.go#L1068
       const cmdStr = await this.getSettingAsync<string>('settings', 'api_key_vault_cmd');
       if (!cmdStr?.trim()) return '';
 

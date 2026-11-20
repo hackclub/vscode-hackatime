@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-// helpers around wakatime-cli's offline queue (offline_heartbeats.bdb). heartbeats sent
+// helpers around hackatime-cli's offline queue (offline_heartbeats.bdb). heartbeats sent
 // without an api key exit with 104 but still land in this queue, and the cli flushes it to
 // whichever account the next successful heartbeat belongs to.
 
@@ -53,7 +53,7 @@ export async function getOfflineTimes(
   return parsed.map((h) => Number(h?.time)).filter((t) => Number.isFinite(t));
 }
 
-// where wakatime-cli keeps the queue: straight inside WAKATIME_HOME when that's set,
+// where hackatime-cli keeps the queue: straight inside WAKATIME_HOME when that's set,
 // otherwise in ~/.wakatime
 export function getOfflineQueueFile(env: NodeJS.ProcessEnv = process.env): string {
   const wakatimeHome = env.WAKATIME_HOME?.trim();

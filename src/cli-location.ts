@@ -23,11 +23,11 @@ function osName(): string {
 export function getCliLocationGlobal(logger?: Logger): string | undefined {
   if (cliLocationGlobal) return cliLocationGlobal;
 
-  const binaryName = `wakatime-cli${Desktop.isWindows() ? '.exe' : ''}`;
+  const binaryName = `hackatime-cli${Desktop.isWindows() ? '.exe' : ''}`;
   const found = which.sync(binaryName, { nothrow: true });
   if (found) {
     cliLocationGlobal = found;
-    logger?.debug(`Using global wakatime-cli location: ${found}`);
+    logger?.debug(`Using global hackatime-cli location: ${found}`);
   }
 
   return cliLocationGlobal;
@@ -38,6 +38,6 @@ export function getCliLocation(resourcesFolder: string, logger?: Logger): string
   if (global) return global;
 
   const ext = Desktop.isWindows() ? '.exe' : '';
-  const binary = `wakatime-cli-${osName()}-${architecture()}${ext}`;
+  const binary = `hackatime-cli-${osName()}-${architecture()}${ext}`;
   return path.join(resourcesFolder, binary);
 }

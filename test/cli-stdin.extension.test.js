@@ -6,9 +6,9 @@ const os = require('os');
 const path = require('path');
 const { Hackatime } = require('../out/src/wakatime');
 
-// wakatime-cli can exit before it reads the extra heartbeats on stdin (a crash, an old
+// hackatime-cli can exit before it reads the extra heartbeats on stdin (a crash, an old
 // build, a bad flag). writing to that closed pipe must not throw out of the extension.
-suite('wakatime-cli exits without reading stdin', function () {
+suite('hackatime-cli exits without reading stdin', function () {
   let dir, record, warnings;
 
   setup(function () {

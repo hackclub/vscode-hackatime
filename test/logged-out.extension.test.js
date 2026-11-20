@@ -114,7 +114,7 @@ suite('desktop: logged out heartbeats (extension host)', function () {
     // nothing can leave the machine: there's no key, and the api url is a dead local port
     fs.writeFileSync(
       path.join(home, '.wakatime.cfg'),
-      '[settings]\napi_url = http://127.0.0.1:9/api\n',
+      '[settings]\napi_url = http://127.0.0.1:9/api\nsync_ai_disabled = true\n',
     );
     oldEnv = { HOME: process.env.HOME, WAKATIME_HOME: process.env.WAKATIME_HOME };
     process.env.HOME = home;
@@ -250,7 +250,7 @@ suite('desktop: saved activity question without a real cli', () => {
     if (process.platform === 'win32') this.skip();
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hackatime-fakecli-'));
     // knows how many heartbeats are queued, but fails to print them
-    const fakeCli = path.join(dir, 'wakatime-cli');
+    const fakeCli = path.join(dir, 'hackatime-cli');
     fs.writeFileSync(
       fakeCli,
       '#!/bin/sh\n' +

@@ -185,7 +185,7 @@
         "hackatime.aiTranscriptSync.enabled": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Let wakatime-cli read the local transcripts of AI coding tools (Claude Code, Codex, Cursor, Amp and others) and send the AI activity it finds to Hackatime. Off by default: while off, the extension tells wakatime-cli to skip transcripts, even if `sync_ai_disabled` is unset in `~/.wakatime.cfg`.",
+          "markdownDescription": "Let hackatime-cli read the local transcripts of AI coding tools (Claude Code, Codex, Cursor, Amp and others) and send the AI activity it finds to Hackatime. Off by default: while off, the extension tells hackatime-cli to skip transcripts, even if `sync_ai_disabled` is unset in `~/.wakatime.cfg`.",
           "scope": "application"
         }
       }
@@ -194,7 +194,6 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.6.6",
-    "@types/semver": "^7.8.0",
     "@types/vscode": "^1.89.0",
     "@types/webpack": "^5.28.5",
     "@types/which": "^3.0.4",
@@ -208,7 +207,6 @@
     "original-fs": "^1.2.0",
     "ovsx": "1.4.0",
     "prettier": "3.10.1",
-    "semver": "^7.8.6",
     "ts-loader": "^9.6.2",
     "tslib": "^2.9.1",
     "typescript": "^6.0.3",

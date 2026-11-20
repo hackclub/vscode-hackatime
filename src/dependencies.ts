@@ -3,7 +3,6 @@ import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import * as semver from 'semver';
 
 import { Options, Setting } from './options';
 
@@ -12,12 +11,6 @@ import { Desktop } from './desktop';
 import { downloadToFile, getJson } from './http-get';
 import { Logger } from './logger';
 
-enum osName {
-  darwin = 'darwin',
-  windows = 'windows',
-  linux = 'linux',
-}
-
 export class Dependencies {
   private options: Options;
   private logger: Logger;
@@ -25,16 +18,8 @@ export class Dependencies {
   private cliLocation?: string = undefined;
   private cliLocationGlobal?: string = undefined;
   private cliInstalled: boolean = false;
-  private githubDownloadUrl = 'https://github.com/wakatime/wakatime-cli/releases/latest/download';
-  private githubReleasesUrl = 'https://api.github.com/repos/wakatime/wakatime-cli/releases/latest';
-  private legacyOperatingSystems: {
-    [key in osName]?: {
-      kernelLessThan: string;
-      tag: string;
-    }[];
-  } = {
-    [osName.darwin]: [{ kernelLessThan: '17.0.0', tag: 'v1.39.1-alpha.1' }],
-  };
+  private githubDownloadUrl = 'https://github.com/hackclub/hackatime-cli/releases/latest/download';
+  private githubReleasesUrl = 'https://api.github.com/repos/hackclub/hackatime-cli/releases/latest';
 
   constructor(options: Options, logger: Logger, resourcesLocation: string) {
     this.options = options;
@@ -86,16 +71,10 @@ export class Dependencies {
       child_process.execFile(this.getCliLocation(), args, options, (error, _stdout, stderr) => {
         if (!(error != null)) {
           let currentVersion = _stdout.toString().trim() + stderr.toString().trim();
-          this.logger.debug(`Current wakatime-cli version is ${currentVersion}`);
+          this.logger.debug(`Current hackatime-cli version is ${currentVersion}`);
 
           if (currentVersion === '<local-build>') {
             callback(true);
-            return;
-          }
-
-          const tag = this.legacyReleaseTag();
-          if (tag && currentVersion !== tag) {
-            callback(false);
             return;
           }
 
@@ -109,7 +88,7 @@ export class Dependencies {
               const fourHours = 4 * 3600;
               if (lastAccessed && lastAccessed + fourHours > now) {
                 this.logger.debug(
-                  `Skip checking for wakatime-cli updates because recently checked ${
+                  `Skip checking for hackatime-cli updates because recently checked ${
                     now - lastAccessed
                   } seconds ago.`,
                 );
@@ -117,16 +96,16 @@ export class Dependencies {
                 return;
               }
 
-              this.logger.debug('Checking for updates to wakatime-cli...');
+              this.logger.debug('Checking for updates to hackatime-cli...');
               this.getLatestCliVersion((latestVersion) => {
                 if (currentVersion === latestVersion) {
-                  this.logger.debug('wakatime-cli is up to date');
+                  this.logger.debug('hackatime-cli is up to date');
                   callback(true);
                 } else if (latestVersion) {
-                  this.logger.debug(`Found an updated wakatime-cli ${latestVersion}`);
+                  this.logger.debug(`Found an updated hackatime-cli ${latestVersion}`);
                   callback(false);
                 } else {
-                  this.logger.debug('Unable to find latest wakatime-cli version');
+                  this.logger.debug('Unable to find latest hackatime-cli version');
                   callback(true);
                 }
               });
@@ -145,19 +124,19 @@ export class Dependencies {
     this.options.getSetting('settings', 'proxy', false, (proxy: Setting) => {
       this.options.getSetting('settings', 'no_ssl_verify', false, (noSSLVerify: Setting) => {
         this.logger.debug(
-          `Fetching latest wakatime-cli version from GitHub API: ${this.githubReleasesUrl}`,
+          `Fetching latest hackatime-cli version from GitHub API: ${this.githubReleasesUrl}`,
         );
         if (proxy.value) this.logger.debug(`Using Proxy: ${proxy.value}`);
         getJson(this.githubReleasesUrl, {
           proxy: proxy.value || undefined,
           strictSSL: noSSLVerify.value !== 'true',
-          headers: { 'User-Agent': 'github.com/wakatime/vscode-wakatime' },
+          headers: { 'User-Agent': 'github.com/hackclub/vscode-hackatime' },
         })
           .then(({ status, body }) => {
             if (status == 200 && body?.tag_name) {
               this.logger.debug(`GitHub API Response ${status}`);
               const latestCliVersion = body['tag_name'];
-              this.logger.debug(`Latest wakatime-cli version from GitHub: ${latestCliVersion}`);
+              this.logger.debug(`Latest hackatime-cli version from GitHub: ${latestCliVersion}`);
               this.options.setSetting(
                 'internal',
                 'cli_version_last_accessed',
@@ -179,9 +158,9 @@ export class Dependencies {
   }
 
   private installCli(callback: () => void): void {
-    this.logger.debug(`Downloading wakatime-cli from GitHub...`);
+    this.logger.debug(`Downloading hackatime-cli from GitHub...`);
     const url = this.cliDownloadUrl();
-    let zipFile = path.join(this.resourcesLocation, 'wakatime-cli' + this.randStr() + '.zip');
+    let zipFile = path.join(this.resourcesLocation, 'hackatime-cli' + this.randStr() + '.zip');
     this.downloadFile(
       url,
       zipFile,
@@ -200,7 +179,7 @@ export class Dependencies {
   }
 
   private extractCli(zipFile: string, callback: () => void): void {
-    this.logger.debug(`Extracting wakatime-cli into "${this.resourcesLocation}"...`);
+    this.logger.debug(`Extracting hackatime-cli into "${this.resourcesLocation}"...`);
     this.backupCli();
     this.unzip(zipFile, this.resourcesLocation, (unzipped) => {
       if (!unzipped) {
@@ -209,16 +188,16 @@ export class Dependencies {
         this.removeCli();
         const cli = this.getCliLocation();
         try {
-          this.logger.debug('Chmod 755 wakatime-cli...');
+          this.logger.debug('Chmod 755 hackatime-cli...');
           fs.chmodSync(cli, 0o755);
         } catch (e) {
           this.logger.warnException(e);
         }
         const ext = Desktop.isWindows() ? '.exe' : '';
-        const link = path.join(this.resourcesLocation, `wakatime-cli${ext}`);
+        const link = path.join(this.resourcesLocation, `hackatime-cli${ext}`);
         if (!this.isSymlink(link)) {
           try {
-            this.logger.debug(`Create symlink from wakatime-cli to ${cli}`);
+            this.logger.debug(`Create symlink from hackatime-cli to ${cli}`);
             fs.symlinkSync(cli, link);
           } catch (e) {
             this.logger.warnException(e);
@@ -233,7 +212,7 @@ export class Dependencies {
       }
       callback();
     });
-    this.logger.debug('Finished extracting wakatime-cli.');
+    this.logger.debug('Finished extracting hackatime-cli.');
   }
 
   private backupCli() {
@@ -299,20 +278,6 @@ export class Dependencies {
     }
   }
 
-  private legacyReleaseTag() {
-    const osname = this.osName() as osName;
-    const legacyOS = this.legacyOperatingSystems[osname];
-    if (!legacyOS) return;
-    const version = legacyOS.find((spec) => {
-      try {
-        return semver.lt(os.release(), spec.kernelLessThan);
-      } catch (e) {
-        return false;
-      }
-    });
-    return version?.tag;
-  }
-
   private architecture(): string {
     const arch = os.arch();
     if (arch.indexOf('32') > -1) return '386';
@@ -330,52 +295,7 @@ export class Dependencies {
     const osname = this.osName();
     const arch = this.architecture();
 
-    // Use legacy wakatime-cli release to support older operating systems
-    const tag = this.legacyReleaseTag();
-    if (tag) {
-      return `https://github.com/wakatime/wakatime-cli/releases/download/${tag}/wakatime-cli-${osname}-${arch}.zip`;
-    }
-
-    const validCombinations = [
-      'android-amd64',
-      'android-arm64',
-      'darwin-amd64',
-      'darwin-arm64',
-      'freebsd-386',
-      'freebsd-amd64',
-      'freebsd-arm',
-      'linux-386',
-      'linux-amd64',
-      'linux-arm',
-      'linux-arm64',
-      'netbsd-386',
-      'netbsd-amd64',
-      'netbsd-arm',
-      'openbsd-386',
-      'openbsd-amd64',
-      'openbsd-arm',
-      'openbsd-arm64',
-      'windows-386',
-      'windows-amd64',
-      'windows-arm64',
-    ];
-    if (!validCombinations.includes(`${osname}-${arch}`))
-      this.reportMissingPlatformSupport(osname, arch);
-
-    return `${this.githubDownloadUrl}/wakatime-cli-${osname}-${arch}.zip`;
-  }
-
-  private reportMissingPlatformSupport(osname: string, architecture: string): void {
-    const url = `https://api.wakatime.com/api/v1/cli-missing?osname=${osname}&architecture=${architecture}&plugin=vscode`;
-    this.options.getSetting('settings', 'proxy', false, (proxy: Setting) => {
-      this.options.getSetting('settings', 'no_ssl_verify', false, (noSSLVerify: Setting) => {
-        // fire and forget, nothing depends on the answer
-        getJson(url, {
-          proxy: proxy.value || undefined,
-          strictSSL: noSSLVerify.value !== 'true',
-        }).catch(() => {});
-      });
-    });
+    return `${this.githubDownloadUrl}/hackatime-cli-${osname}-${arch}.zip`;
   }
 
   private randStr(): string {
