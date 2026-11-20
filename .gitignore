@@ -1,7 +1,7 @@
 dist
 out/**
 node_modules
-wakatime-cli
+hackatime-cli
 .vscode-test/**
 .vscode-test-web/**
 *.vsix

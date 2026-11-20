@@ -250,7 +250,7 @@ suite('desktop: saved activity question without a real cli', () => {
     if (process.platform === 'win32') this.skip();
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hackatime-fakecli-'));
     // knows how many heartbeats are queued, but fails to print them
-    const fakeCli = path.join(dir, 'wakatime-cli');
+    const fakeCli = path.join(dir, 'hackatime-cli');
     fs.writeFileSync(
       fakeCli,
       '#!/bin/sh\n' +

@@ -140,14 +140,14 @@ suite('AI transcript sync is opt-in', function () {
 
 // the --help check decides whether heartbeats can pass --sync-ai-disabled, so a broken
 // check must never get stuck on "no" (that would let the cli read transcripts)
-suite('wakatime-cli flag check', function () {
+suite('hackatime-cli flag check', function () {
   const FLAG = '--sync-ai-disabled';
   let dir, cli;
 
   setup(function () {
     if (process.platform === 'win32') this.skip();
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hackatime-flagcheck-'));
-    cli = path.join(dir, 'wakatime-cli');
+    cli = path.join(dir, 'hackatime-cli');
   });
 
   teardown(() => {
