@@ -114,7 +114,7 @@ suite('desktop: logged out heartbeats (extension host)', function () {
     // nothing can leave the machine: there's no key, and the api url is a dead local port
     fs.writeFileSync(
       path.join(home, '.wakatime.cfg'),
-      '[settings]\napi_url = http://127.0.0.1:9/api\n',
+      '[settings]\napi_url = http://127.0.0.1:9/api\nsync_ai_disabled = true\n',
     );
     oldEnv = { HOME: process.env.HOME, WAKATIME_HOME: process.env.WAKATIME_HOME };
     process.env.HOME = home;
