@@ -18,10 +18,12 @@ import {
 } from './constants';
 
 import { Logger } from './logger';
+import { StruggleController } from './struggle/struggleController';
 import { Hackatime } from './wakatime';
 
 var logger = new Logger(LogLevel.INFO);
 var hackatime: Hackatime;
+var struggle: StruggleController;
 
 export function activate(ctx: vscode.ExtensionContext) {
   hackatime = new Hackatime(ctx, logger);
@@ -109,8 +111,13 @@ export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(hackatime);
 
   hackatime.initialize();
+
+  struggle = new StruggleController(ctx, hackatime);
+  ctx.subscriptions.push(struggle);
+  void struggle.start();
 }
 
 export function deactivate() {
+  struggle?.dispose();
   hackatime.dispose();
 }

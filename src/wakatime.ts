@@ -93,6 +93,10 @@ export class Hackatime {
   private eventListenerVersion = 0;
 
   private pendingGitRepoPrompt?: string = undefined;
+  private struggleTrackActive: boolean = false;
+  private struggleTrackTooltip: string = 'Hackatime — Hackatime(ST) (AI StruggleTrack)';
+  private lastNormalStatusText?: string = undefined;
+  private lastNormalStatusTooltip: string = 'Hackatime: Initialized';
 
   constructor(private readonly context: vscode.ExtensionContext, logger: Logger) {
     this.extensionPath = context.extensionPath;
@@ -231,7 +235,28 @@ export class Hackatime {
     });
   }
 
-  private updateStatusBarText(text?: string): void {
+  public isStruggleTrackActive(): boolean {
+    return this.struggleTrackActive;
+  }
+
+  public setStruggleTrackState(active: boolean, tooltip?: string): void {
+    this.struggleTrackActive = active;
+    if (tooltip) {
+      this.struggleTrackTooltip = tooltip;
+    }
+    if (!this.statusBar) return;
+    if (this.struggleTrackActive) {
+      this.statusBar.text = '$(pulse) Hackatime(ST)';
+      this.statusBar.tooltip = this.struggleTrackTooltip;
+      this.statusBar.command = 'hackatime-ai.showStatus';
+    } else {
+      this.statusBar.command = COMMAND_DASHBOARD;
+      this.applyNormalStatusBarText(this.lastNormalStatusText);
+      this.statusBar.tooltip = this.lastNormalStatusTooltip;
+    }
+  }
+
+  private applyNormalStatusBarText(text?: string): void {
     if (!this.statusBar) return;
     if (!text) {
       this.statusBar.text = '$(clockface)';
@@ -240,8 +265,15 @@ export class Hackatime {
     }
   }
 
+  private updateStatusBarText(text?: string): void {
+    this.lastNormalStatusText = text;
+    if (!this.statusBar || this.struggleTrackActive) return;
+    this.applyNormalStatusBarText(text);
+  }
+
   private updateStatusBarTooltip(tooltipText: string): void {
-    if (!this.statusBar) return;
+    this.lastNormalStatusTooltip = tooltipText;
+    if (!this.statusBar || this.struggleTrackActive) return;
     this.statusBar.tooltip = tooltipText;
   }
 
@@ -1256,6 +1288,7 @@ export class Hackatime {
     isDebugging: boolean,
     isAICoding: boolean,
   ): Promise<void> {
+    if (this.struggleTrackActive) return;
     if (!this.dependencies.isCliInstalled()) return;
 
     const file = Utils.getFocusedFile(doc);

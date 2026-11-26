@@ -130,12 +130,68 @@
       {
         "command": "hackatime.ai_transcript_sync",
         "title": "Hackatime: AI Transcript Sync"
+      },
+      {
+        "command": "hackatime-ai.showStatus",
+        "title": "Hackatime(ST): Show Live Status"
+      },
+      {
+        "command": "hackatime-ai.openStruggleConverter",
+        "title": "Hackatime(ST): Convert Struggle Points (/my/struggle)"
+      },
+      {
+        "command": "hackatime-ai.syncNow",
+        "title": "Hackatime(ST): Sync Now"
+      },
+      {
+        "command": "hackatime-ai.installCliHooks",
+        "title": "Hackatime(ST): Configure Git, Shell & CLI Agent Hooks"
+      },
+      {
+        "command": "hackatime-ai.toggleAutostart",
+        "title": "Hackatime(ST): Configure Background Autostart (Standalone Agents)"
+      },
+      {
+        "command": "hackatime-ai.setStruggleServerUrl",
+        "title": "Hackatime(ST): Set Struggle Server URL (Optional Custom Backend)"
+      },
+      {
+        "command": "hackatime-ai.restartDaemon",
+        "title": "Hackatime(ST): Restart Local Tracking Service"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "hackatime.ai_transcript_sync",
+          "when": "!isWeb"
+        },
+        {
+          "command": "hackatime-ai.showStatus",
+          "when": "!isWeb"
+        },
+        {
+          "command": "hackatime-ai.openStruggleConverter",
+          "when": "!isWeb"
+        },
+        {
+          "command": "hackatime-ai.syncNow",
+          "when": "!isWeb"
+        },
+        {
+          "command": "hackatime-ai.installCliHooks",
+          "when": "!isWeb"
+        },
+        {
+          "command": "hackatime-ai.toggleAutostart",
+          "when": "!isWeb"
+        },
+        {
+          "command": "hackatime-ai.setStruggleServerUrl",
+          "when": "!isWeb"
+        },
+        {
+          "command": "hackatime-ai.restartDaemon",
           "when": "!isWeb"
         }
       ]
@@ -187,6 +243,30 @@
           "default": false,
           "markdownDescription": "Let hackatime-cli read the local transcripts of AI coding tools (Claude Code, Codex, Cursor, Amp and others) and send the AI activity it finds to Hackatime. Off by default: while off, the extension tells hackatime-cli to skip transcripts, even if `sync_ai_disabled` is unset in `~/.wakatime.cfg`.",
           "scope": "application"
+        },
+        "hackatimeAi.struggleApiUrl": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Optional standalone StruggleTrack server URL. Leave empty to send Struggle Windows to hackatime.apiUrl (https://hackatime.hackclub.com/api/hackatime/v1)."
+        },
+        "hackatimeAi.wakatimeProxyPort": {
+          "type": "number",
+          "default": 48290,
+          "scope": "application",
+          "description": "Localhost port used by hackatime-d's WakaTime Dual-Tee Proxy."
+        },
+        "hackatimeAi.daemonPath": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Optional custom path to the hackatime-d binary. Leave empty to use a bundled or PATH binary."
+        },
+        "hackatimeAi.autoStartOnLogin": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Automatically start hackatime-d on OS login so standalone agentic tools (Antigravity, Cursor, Claude Code, Codex, Gemini CLI) are tracked even when VS Code is closed."
         }
       }
     }
